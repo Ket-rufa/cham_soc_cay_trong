@@ -1,0 +1,8 @@
+<dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Ứng dụng cần truy cập camera để nhận diện cây trồng</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Ứng dụng cần truy cập micro (nếu bạn muốn quay video)</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Ứng dụng cần truy cập thư viện để chọn ảnh cây trồng</string>
+</dict>

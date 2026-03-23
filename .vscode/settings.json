@@ -1,0 +1,9 @@
+{
+    "intelephense.environment.excludePaths": [
+        "**/vendor/**"
+    ],
+    "files.exclude": {
+        "**/vendor": false
+    },
+    "php.validate.enable": false
+}
