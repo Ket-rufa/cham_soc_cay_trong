@@ -29,5 +29,8 @@ Route::get('/library', [PlantLibraryController::class, 'index']);
 Route::post('/plants', [PlantController::class, 'store']);
 Route::get('/plant-info', [PlantInfoController::class, 'search']);
 Route::delete('/plants/{id}', [PlantController::class, 'destroy']);
+use App\Http\Controllers\CareScheduleController;
+Route::get('/schedules', [CareScheduleController::class, 'index']);
+Route::post('/schedules/{id}/complete', [CareScheduleController::class, 'complete']);
 
 // ...

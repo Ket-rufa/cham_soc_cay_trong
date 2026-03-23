@@ -9,6 +9,7 @@ import 'package:cham_soc_cay_trong/topic_article_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
+import 'care_schedule_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -407,16 +408,25 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _buildFunctionItem(
-          Icons.medical_services_outlined,
-          'Chuẩn đoán',
-          const Color(0xFFFFEBEB),
-          const Color(0xFFE53E3E),
+          Icons.calendar_month_rounded,
+          'Lịch chăm sóc',
+          const Color(0xFFE8F5E9),
+          const Color(0xFF2E7D32),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CareScheduleScreen(),
+              ),
+            );
+          },
         ),
         _buildFunctionItem(
-          Icons.chat_bubble_outline,
-          'Chat với AI',
-          const Color(0xFFEBF4FF),
-          const Color(0xFF3182CE),
+          Icons.menu_book_rounded,
+          'Cẩm nang',
+          const Color(0xFFE3F2FD),
+          const Color(0xFF1565C0),
+          onTap: () => widget.onSwitchTab(1),
         ),
         _buildFunctionItem(
           Icons.yard_outlined,

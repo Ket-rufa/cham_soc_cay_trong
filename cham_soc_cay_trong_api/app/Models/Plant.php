@@ -15,4 +15,14 @@ class Plant extends Model
         'image_url',
         'note',
     ];
+
+    public function careSchedules()
+    {
+        return $this->hasMany(PlantCareSchedule::class);
+    }
+
+    public function histories()
+    {
+        return $this->hasMany(PlantHistory::class);
+    }
 }

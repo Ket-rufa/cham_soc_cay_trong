@@ -105,6 +105,40 @@ class PlantController extends Controller
             // 3. Lưu
             $plant->save();
 
+            // 4. Tạo lịch chăm sóc mặc định
+            \App\Models\PlantCareSchedule::insert([
+                [
+                    'plant_id' => $plant->id,
+                    'task_type' => 'water',
+                    'frequency_days' => 2,
+                    'last_done_at' => null,
+                    'next_due_at' => now(), // Hôm nay
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+                [
+                    'plant_id' => $plant->id,
+                    'task_type' => 'fertilize',
+                    'frequency_days' => 14,
+                    'last_done_at' => null,
+                    'next_due_at' => now()->addDays(3),
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+                [
+                    'plant_id' => $plant->id,
+                    'task_type' => 'prune',
+                    'frequency_days' => 30,
+                    'last_done_at' => null,
+                    'next_due_at' => now()->addDays(10),
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+            ]);
+
             return response()->json(['status' => 200, 'message' => 'Lưu thành công'], 200);
 
         } catch (\Exception $e) {
