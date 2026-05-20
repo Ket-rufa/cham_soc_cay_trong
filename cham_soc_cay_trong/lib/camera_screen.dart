@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cham_soc_cay_trong/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:cham_soc_cay_trong/main.dart'; // Để lấy biến cameras toàn cục
@@ -58,7 +59,7 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       // 1. Chụp ảnh
       XFile imageFile = await _controller!.takePicture();
-      
+
       // 2. Dừng hình lại cho giống chụp xong
       await _controller!.pausePreview();
 
@@ -67,14 +68,14 @@ class _CameraScreenState extends State<CameraScreen> {
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PlantIdentifyResultScreen(imageFile: File(imageFile.path)),
+            builder: (context) =>
+                PlantIdentifyResultScreen(imageFile: File(imageFile.path)),
           ),
         );
       }
 
       // 4. Khi quay lại thì tiếp tục chạy camera
       _controller!.resumePreview();
-
     } catch (e) {
       print("Lỗi chụp ảnh: $e");
     }
@@ -138,16 +139,16 @@ class _CameraScreenState extends State<CameraScreen> {
               ),
             ),
           ),
-          
+
           // 4. Dòng chữ hướng dẫn
           Positioned(
             bottom: 120,
             left: 0,
             right: 0,
-            child: const Text(
-              "Chạm để nhận diện & chẩn đoán",
+            child: Text(
+              context.tr('camera.identifyHint'),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,

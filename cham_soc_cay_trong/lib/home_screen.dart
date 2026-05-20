@@ -3,13 +3,17 @@ import 'dart:typed_data';
 
 import 'package:cham_soc_cay_trong/camera_screen.dart';
 import 'package:cham_soc_cay_trong/cay_trong_cua_toi.dart';
+import 'package:cham_soc_cay_trong/l10n/app_localizations.dart';
 import 'package:cham_soc_cay_trong/more_screen.dart';
+import 'package:cham_soc_cay_trong/pest_disease_guide_screen.dart';
 import 'package:cham_soc_cay_trong/plant_category_screen.dart';
 import 'package:cham_soc_cay_trong/topic_article_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'care_schedule_screen.dart';
+import 'package:cham_soc_cay_trong/top_toast_util.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,12 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MoreScreen(
         onProfileUpdated: (String message) {
           _onItemTapped(0);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          TopToast.show(context, message, backgroundColor: Colors.green);
         },
       ),
     ];
@@ -88,33 +87,36 @@ class _HomeScreenState extends State<HomeScreen> {
         notchMargin: 8,
         color: bottomNavBg,
         elevation: 10,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildBottomNavItem(
-                icon: Icons.home,
-                label: 'Trang chủ',
-                index: 0,
-              ),
-              _buildBottomNavItem(
-                icon: Icons.local_florist,
-                label: 'Danh sách cây',
-                index: 1,
-              ),
-              const SizedBox(width: 40),
-              _buildBottomNavItem(
-                icon: Icons.yard,
-                label: 'Vườn của bạn',
-                index: 2,
-              ),
-              _buildBottomNavItem(
-                icon: Icons.apps,
-                label: 'Thêm',
-                index: 3,
-              ),
-            ],
+        clipBehavior: Clip.antiAlias, // Giữ notch gọn gàng không bị chèn màu
+        child: SafeArea(
+          child: SizedBox(
+            height: 60,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildBottomNavItem(
+                  icon: Icons.home,
+                  label: context.tr('nav.home'),
+                  index: 0,
+                ),
+                _buildBottomNavItem(
+                  icon: Icons.local_florist,
+                  label: context.tr('nav.plantList'),
+                  index: 1,
+                ),
+                const SizedBox(width: 40), // Khoảng trống cho FAB
+                _buildBottomNavItem(
+                  icon: Icons.yard,
+                  label: context.tr('nav.yourGarden'),
+                  index: 2,
+                ),
+                _buildBottomNavItem(
+                  icon: Icons.apps,
+                  label: context.tr('nav.more'),
+                  index: 3,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -170,14 +172,17 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
   final Color darkText = Colors.black87;
   final Color greyText = Colors.grey[600]!;
 
-  String userName = 'Người dùng';
+  String userName = '';
   Uint8List? userAvatarBytes;
   String? userAvatarUrl;
+  List<TopicArticle> _topicArticles = demoTopicArticles;
+  bool _isLoadingTopicArticles = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
+    _loadTopicArticles();
   }
 
   @override
@@ -190,7 +195,7 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
 
   Future<void> _loadUserProfile() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String savedName = prefs.getString('userName') ?? 'Bạn mới';
+    final String savedName = prefs.getString('userName') ?? '';
     final String? avatarUrl = prefs.getString('userAvatarUrl');
     final String? avatarBase64 = prefs.getString('userAvatarBase64');
 
@@ -212,6 +217,45 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
       userAvatarUrl = avatarUrl;
       userAvatarBytes = avatarBytes;
     });
+  }
+
+  Future<void> _loadTopicArticles() async {
+    setState(() {
+      _isLoadingTopicArticles = true;
+    });
+
+    try {
+      final url = Uri.parse('${Config.apiUrl}/articles');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final dynamic rawArticles = decoded is Map ? decoded['data'] : decoded;
+
+        if (rawArticles is List) {
+          final articles = rawArticles
+              .whereType<Map>()
+              .map((item) => TopicArticle.fromJson(
+                    Map<String, dynamic>.from(item),
+                  ))
+              .toList();
+
+          if (articles.isNotEmpty && mounted) {
+            setState(() {
+              _topicArticles = articles;
+            });
+          }
+        }
+      }
+    } catch (_) {
+      // Giữ dữ liệu mẫu khi API chưa chạy hoặc chưa migrate bảng articles.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingTopicArticles = false;
+        });
+      }
+    }
   }
 
   @override
@@ -252,7 +296,7 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
         children: [
           Expanded(
             child: Text(
-              userName,
+              userName.isEmpty ? context.tr('home.newUser') : userName,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -309,7 +353,7 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
         Icon(Icons.eco_rounded, color: greenCta, size: 28),
         const SizedBox(width: 8),
         Text(
-          'Nhận diện cây trồng',
+          context.tr('home.identifyTitle'),
           style: TextStyle(
             color: darkText,
             fontSize: 22,
@@ -360,7 +404,7 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Chụp ảnh để nhận diện bất kỳ cây trồng nào',
+                context.tr('home.identifyHint'),
                 style: TextStyle(
                   color: greyText,
                   fontSize: 15,
@@ -386,8 +430,8 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
           );
         },
         icon: const Icon(Icons.camera_alt, color: Colors.white),
-        label: const Text(
-          'Xác định ngay bây giờ',
+        label: Text(
+          context.tr('home.identifyNow'),
           style: TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -409,7 +453,7 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
       children: [
         _buildFunctionItem(
           Icons.calendar_month_rounded,
-          'Lịch chăm sóc',
+          context.tr('home.careSchedule'),
           const Color(0xFFE8F5E9),
           const Color(0xFF2E7D32),
           onTap: () {
@@ -423,14 +467,31 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
         ),
         _buildFunctionItem(
           Icons.menu_book_rounded,
-          'Cẩm nang',
+          context.tr('home.guide'),
           const Color(0xFFE3F2FD),
           const Color(0xFF1565C0),
-          onTap: () => widget.onSwitchTab(1),
+          onTap: () async {
+            final prefs = await SharedPreferences.getInstance();
+            final plantId = prefs.getString('active_plant_id');
+            final plantName = prefs.getString('active_plant_name');
+
+            if (!mounted) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PestDiseaseGuideScreen(
+                  plantId: plantId ?? '',
+                  plantName: (plantName != null && plantName.isNotEmpty)
+                      ? plantName
+                      : context.tr('common.all'),
+                ),
+              ),
+            );
+          },
         ),
         _buildFunctionItem(
           Icons.yard_outlined,
-          'Vườn của bạn',
+          context.tr('nav.yourGarden'),
           const Color(0xFFF0FFF4),
           const Color(0xFF38A169),
           onTap: () => widget.onSwitchTab(2),
@@ -446,11 +507,11 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
     Color iconColor, {
     VoidCallback? onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
+    return Column(
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: Ink(
             width: 85,
             height: 85,
             decoration: BoxDecoration(
@@ -461,21 +522,27 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
                 width: 1,
               ),
             ),
-            child: Center(
-              child: Icon(icon, color: iconColor, size: 40),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(24),
+              splashColor: iconColor.withOpacity(0.2),
+              highlightColor: iconColor.withOpacity(0.1),
+              child: Center(
+                child: Icon(icon, color: iconColor, size: 40),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: darkText,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            color: darkText,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -484,7 +551,7 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Chủ Đề',
+          context.tr('home.topics'),
           style: TextStyle(
             color: darkText,
             fontSize: 22,
@@ -492,11 +559,17 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
           ),
         ),
         const SizedBox(height: 16),
+        if (_isLoadingTopicArticles)
+          const LinearProgressIndicator(
+            minHeight: 2,
+            backgroundColor: Colors.transparent,
+          ),
+        if (_isLoadingTopicArticles) const SizedBox(height: 12),
         SizedBox(
           height: 228,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            children: demoTopicArticles
+            children: _topicArticles
                 .map((article) => _buildTopicCard(context, article))
                 .toList(),
           ),

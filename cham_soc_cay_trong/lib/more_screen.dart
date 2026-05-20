@@ -1,22 +1,26 @@
+import 'package:cham_soc_cay_trong/l10n/app_localizations.dart';
+import 'package:cham_soc_cay_trong/l10n/language_controller.dart';
+import 'package:cham_soc_cay_trong/language_options_screen.dart';
 import 'package:cham_soc_cay_trong/login/login_screen.dart';
 import 'package:cham_soc_cay_trong/profile_screen.dart';
+import 'package:cham_soc_cay_trong/top_toast_util.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MoreScreen extends StatelessWidget {
-  MoreScreen({
+  const MoreScreen({
     super.key,
     required this.onProfileUpdated,
   });
 
   final ValueChanged<String> onProfileUpdated;
 
-  final List<String> _menuTitles = const <String>[
-    'Thông tin cá nhân',
-    'Nhận xét',
-    'Đánh giá ứng dụng',
-    'Điều khoản & Dịch vụ',
-    'Tùy chọn ngôn ngữ',
+  final List<_MoreMenuItem> _menuItems = const <_MoreMenuItem>[
+    _MoreMenuItem(id: 'profile', titleKey: 'settings.personalInfo'),
+    _MoreMenuItem(id: 'reviews', titleKey: 'settings.reviews'),
+    _MoreMenuItem(id: 'rate_app', titleKey: 'settings.rateApp'),
+    _MoreMenuItem(id: 'terms', titleKey: 'settings.terms'),
+    _MoreMenuItem(id: 'language', titleKey: 'settings.languageOptions'),
   ];
 
   @override
@@ -29,17 +33,20 @@ class MoreScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text(
-                'Cài đặt',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              Text(
+                context.tr('settings.title'),
+                style:
+                    const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
+              _buildLanguageInfoBanner(context),
+              const SizedBox(height: 14),
               Divider(thickness: 1, color: Colors.grey[300]),
               Expanded(
                 child: ListView(
                   children: <Widget>[
-                    ..._menuTitles.map(
-                      (String title) => _buildMenuItem(context, title),
+                    ..._menuItems.map(
+                      (item) => _buildMenuItem(context, item),
                     ),
                     const SizedBox(height: 40),
                     SizedBox(
@@ -48,9 +55,9 @@ class MoreScreen extends StatelessWidget {
                       child: ElevatedButton.icon(
                         onPressed: () => _logout(context),
                         icon: const Icon(Icons.logout, color: Colors.white),
-                        label: const Text(
-                          'Đăng xuất',
-                          style: TextStyle(
+                        label: Text(
+                          context.tr('settings.logout'),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -75,13 +82,42 @@ class MoreScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, String title) {
+  Widget _buildLanguageInfoBanner(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFC8E6C9)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.translate_rounded, color: Color(0xFF25BB57)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              context.tr('settings.infoBanner'),
+              style: const TextStyle(
+                color: Color(0xFF1B5E20),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuItem(BuildContext context, _MoreMenuItem item) {
     return Column(
       children: <Widget>[
         ListTile(
           contentPadding: const EdgeInsets.symmetric(vertical: 4),
           title: Text(
-            title,
+            context.tr(item.titleKey),
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -93,15 +129,18 @@ class MoreScreen extends StatelessWidget {
             color: Colors.grey[400],
             size: 20,
           ),
-          onTap: () => _handleMenuTap(context, title),
+          onTap: () => _handleMenuTap(context, item),
         ),
         Divider(height: 1, color: Colors.grey[200]),
       ],
     );
   }
 
-  Future<void> _handleMenuTap(BuildContext context, String title) async {
-    if (title == 'Thông tin cá nhân') {
+  Future<void> _handleMenuTap(
+    BuildContext context,
+    _MoreMenuItem item,
+  ) async {
+    if (item.id == 'profile') {
       final String? successMessage = await Navigator.push<String>(
         context,
         MaterialPageRoute<String>(
@@ -114,8 +153,24 @@ class MoreScreen extends StatelessWidget {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Tính năng '$title' đang phát triển!")),
+    if (item.id == 'language') {
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => const LanguageOptionsScreen(),
+        ),
+      );
+      return;
+    }
+
+    TopToast.show(
+      context,
+      context.tr(
+        'settings.featureInDevelopment',
+        params: <String, String>{'feature': context.tr(item.titleKey)},
+      ),
+      backgroundColor: Colors.blueAccent,
+      icon: Icons.info_outline,
     );
   }
 
@@ -123,23 +178,23 @@ class MoreScreen extends StatelessWidget {
     final bool confirm = await showDialog<bool>(
           context: context,
           builder: (BuildContext dialogContext) => AlertDialog(
-            title: const Text('Đăng xuất'),
-            content: const Text(
-              'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?',
+            title: Text(context.tr('settings.logout')),
+            content: Text(
+              context.tr('settings.logoutConfirm'),
             ),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text(
-                  'Hủy',
-                  style: TextStyle(color: Colors.grey),
+                child: Text(
+                  context.tr('common.cancel'),
+                  style: const TextStyle(color: Colors.grey),
                 ),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text(
-                  'Đăng xuất',
-                  style: TextStyle(color: Colors.red),
+                child: Text(
+                  context.tr('settings.logout'),
+                  style: const TextStyle(color: Colors.red),
                 ),
               ),
             ],
@@ -152,7 +207,15 @@ class MoreScreen extends StatelessWidget {
     }
 
     final SharedPreferences preferences = await SharedPreferences.getInstance();
+    final savedLanguageCode =
+        preferences.getString(LanguageController.storageKey);
     await preferences.clear();
+    if (savedLanguageCode != null && savedLanguageCode.isNotEmpty) {
+      await preferences.setString(
+        LanguageController.storageKey,
+        savedLanguageCode,
+      );
+    }
 
     if (!context.mounted) {
       return;
@@ -164,4 +227,14 @@ class MoreScreen extends StatelessWidget {
       (Route<dynamic> route) => false,
     );
   }
+}
+
+class _MoreMenuItem {
+  const _MoreMenuItem({
+    required this.id,
+    required this.titleKey,
+  });
+
+  final String id;
+  final String titleKey;
 }

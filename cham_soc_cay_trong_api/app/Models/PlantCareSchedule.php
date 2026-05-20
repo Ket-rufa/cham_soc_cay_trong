@@ -15,6 +15,7 @@ class PlantCareSchedule extends Model
         'frequency_days',
         'last_done_at',
         'next_due_at',
+        'note',
         'is_active',
     ];
 

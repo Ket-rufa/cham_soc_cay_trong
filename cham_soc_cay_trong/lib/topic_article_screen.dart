@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 class TopicSection {
@@ -10,6 +12,14 @@ class TopicSection {
     required this.body,
     this.bullets = const [],
   });
+
+  factory TopicSection.fromJson(Map<String, dynamic> json) {
+    return TopicSection(
+      heading: _stringValue(json['heading'], ''),
+      body: _stringValue(json['body'], ''),
+      bullets: _stringList(json['bullets']),
+    );
+  }
 }
 
 class TopicArticle {
@@ -34,6 +44,113 @@ class TopicArticle {
     required this.quickTips,
     required this.sections,
   });
+
+  factory TopicArticle.fromJson(Map<String, dynamic> json) {
+    return TopicArticle(
+      title: _stringValue(json['title'], 'Bài viết'),
+      subtitle: _stringValue(json['subtitle'], ''),
+      category: _stringValue(json['category'], 'Chủ đề'),
+      readTime: _stringValue(json['read_time'], '3 phút'),
+      icon: _iconFromName(_stringValue(json['icon_name'], 'eco')),
+      startColor: Color(_parseHexColor(json['start_color'], 0xFF7CCF7A)),
+      endColor: Color(_parseHexColor(json['end_color'], 0xFF2FAE66)),
+      quickTips: _stringList(json['quick_tips']),
+      sections: _sectionsFromJson(json['sections']),
+    );
+  }
+}
+
+String _stringValue(dynamic value, String fallback) {
+  if (value == null) {
+    return fallback;
+  }
+
+  final text = value.toString().trim();
+  return text.isEmpty ? fallback : text;
+}
+
+List<String> _stringList(dynamic value) {
+  dynamic source = value;
+  if (source is String) {
+    try {
+      source = jsonDecode(source);
+    } catch (_) {
+      return source.trim().isEmpty ? <String>[] : <String>[source];
+    }
+  }
+
+  if (source is List) {
+    return source
+        .map((item) => item?.toString().trim() ?? '')
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  return <String>[];
+}
+
+List<TopicSection> _sectionsFromJson(dynamic value) {
+  dynamic source = value;
+  if (source is String) {
+    try {
+      source = jsonDecode(source);
+    } catch (_) {
+      return <TopicSection>[];
+    }
+  }
+
+  if (source is List) {
+    return source
+        .whereType<Map>()
+        .map((item) => TopicSection.fromJson(Map<String, dynamic>.from(item)))
+        .where((section) => section.heading.isNotEmpty || section.body.isNotEmpty)
+        .toList();
+  }
+
+  return <TopicSection>[];
+}
+
+int _parseHexColor(dynamic value, int fallback) {
+  final raw = value?.toString().trim();
+  if (raw == null || raw.isEmpty) {
+    return fallback;
+  }
+
+  final hex = raw.replaceFirst('#', '').replaceFirst('0x', '').toUpperCase();
+
+  try {
+    if (hex.length == 6) {
+      return int.parse('FF$hex', radix: 16);
+    }
+    if (hex.length == 8) {
+      return int.parse(hex, radix: 16);
+    }
+  } catch (_) {
+    return fallback;
+  }
+
+  return fallback;
+}
+
+IconData _iconFromName(String name) {
+  switch (name.toLowerCase().trim()) {
+    case 'water':
+    case 'water_drop':
+      return Icons.water_drop_outlined;
+    case 'shield':
+    case 'pest':
+      return Icons.shield_moon_outlined;
+    case 'book':
+    case 'guide':
+      return Icons.menu_book_outlined;
+    case 'garden':
+    case 'yard':
+      return Icons.yard_outlined;
+    case 'eco':
+    case 'leaf':
+    default:
+      return Icons.eco_outlined;
+  }
 }
 
 const List<TopicArticle> demoTopicArticles = [

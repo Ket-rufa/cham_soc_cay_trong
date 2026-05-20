@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cham_soc_cay_trong/config.dart';
+import 'package:cham_soc_cay_trong/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cham_soc_cay_trong/top_toast_util.dart';
 
 class UserProfile {
   const UserProfile({
@@ -40,7 +42,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const String _userAvatarUrlKey = 'userAvatarUrl';
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _passwordFormKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
 
   final Color _primaryColor = const Color(0xFF25BB57);
@@ -51,6 +59,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _selectedAvatarFileName = 'avatar.jpg';
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isChangingPassword = false;
+  bool _hideCurrentPassword = true;
+  bool _hideNewPassword = true;
+  bool _hideConfirmPassword = true;
 
   @override
   void initState() {
@@ -61,12 +73,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   Future<void> _loadProfile() async {
-    final SharedPreferences preferences =
-        await SharedPreferences.getInstance();
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
 
     final String savedName =
         preferences.getString(_userNameKey)?.trim().isNotEmpty == true
@@ -97,10 +111,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bạn chưa chọn ảnh mới.'),
-        ),
+      TopToast.show(
+        context,
+        context.tr('profile.noNewAvatar'),
+        backgroundColor: Colors.orange,
+        icon: Icons.warning_amber_rounded,
       );
       return;
     }
@@ -113,9 +128,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() {
       _selectedAvatarBytes = imageBytes;
-      _selectedAvatarFileName = pickedFile.name.isNotEmpty
-          ? pickedFile.name
-          : 'avatar.jpg';
+      _selectedAvatarFileName =
+          pickedFile.name.isNotEmpty ? pickedFile.name : 'avatar.jpg';
     });
   }
 
@@ -125,15 +139,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    final SharedPreferences preferences =
-        await SharedPreferences.getInstance();
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
     final int? userId = preferences.getInt(_userIdKey);
 
+    if (!mounted) {
+      return;
+    }
+
     if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không tìm thấy tài khoản đăng nhập.'),
-        ),
+      TopToast.show(
+        context,
+        context.tr('profile.missingAccount'),
+        backgroundColor: Colors.red,
+        icon: Icons.error_outline,
       );
       return;
     }
@@ -173,7 +191,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final Map<String, dynamic> data =
           responseData['data'] as Map<String, dynamic>;
-      final String updatedName = (data['name'] ?? _nameController.text).toString();
+      final String updatedName =
+          (data['name'] ?? _nameController.text).toString();
       final String? avatarUrl = data['avatar_url']?.toString();
 
       await preferences.setString(_userNameKey, updatedName);
@@ -193,22 +212,103 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _selectedAvatarBytes = null;
       });
 
-      Navigator.pop(context, 'Lưu thông tin cá nhân thành công');
+      Navigator.pop(context, context.tr('profile.saveSuccess'));
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
+      TopToast.show(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
+        backgroundColor: Colors.red,
+        icon: Icons.error_outline,
       );
     } finally {
       if (mounted) {
         setState(() {
           _isSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _changePassword() async {
+    final FormState? form = _passwordFormKey.currentState;
+    if (form == null || !form.validate()) {
+      return;
+    }
+
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    final int? userId = preferences.getInt(_userIdKey);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (userId == null) {
+      TopToast.show(
+        context,
+        context.tr('profile.missingAccount'),
+        backgroundColor: Colors.red,
+        icon: Icons.error_outline,
+      );
+      return;
+    }
+
+    setState(() {
+      _isChangingPassword = true;
+    });
+
+    try {
+      final http.Response response = await http.post(
+        Uri.parse('${Config.apiUrl}/profile/change-password'),
+        body: <String, String>{
+          'user_id': userId.toString(),
+          'current_password': _currentPasswordController.text,
+          'password': _newPasswordController.text,
+          'password_confirmation': _confirmPasswordController.text,
+        },
+      );
+
+      final Map<String, dynamic> responseData =
+          json.decode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode != 200) {
+        final String errorMessage = _extractErrorMessage(responseData);
+        throw Exception(errorMessage);
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+      form.reset();
+
+      TopToast.show(
+        context,
+        context.tr('profile.passwordChanged'),
+        backgroundColor: _primaryColor,
+        icon: Icons.check_circle_outline,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      TopToast.show(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
+        backgroundColor: Colors.red,
+        icon: Icons.error_outline,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isChangingPassword = false;
         });
       }
     }
@@ -224,8 +324,149 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return firstError.toString();
     }
 
-    return (responseData['message'] ?? 'Không thể cập nhật thông tin.')
+    return (responseData['message'] ?? context.tr('profile.updateFailed'))
         .toString();
+  }
+
+  Widget _buildPasswordSection(BuildContext context) {
+    return Form(
+      key: _passwordFormKey,
+      child: Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.lock_reset_rounded,
+                    color: _primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.tr('profile.changePasswordTitle'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey[900],
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        context.tr('profile.changePasswordHelp'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            ProfilePasswordField(
+              controller: _currentPasswordController,
+              labelText: context.tr('profile.currentPassword'),
+              primaryColor: _primaryColor,
+              obscureText: _hideCurrentPassword,
+              textInputAction: TextInputAction.next,
+              onToggleVisibility: () {
+                setState(() {
+                  _hideCurrentPassword = !_hideCurrentPassword;
+                });
+              },
+              validator: (String? value) {
+                if ((value ?? '').isEmpty) {
+                  return context.tr('profile.currentPasswordRequired');
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 14),
+            ProfilePasswordField(
+              controller: _newPasswordController,
+              labelText: context.tr('profile.newPassword'),
+              primaryColor: _primaryColor,
+              obscureText: _hideNewPassword,
+              textInputAction: TextInputAction.next,
+              onToggleVisibility: () {
+                setState(() {
+                  _hideNewPassword = !_hideNewPassword;
+                });
+              },
+              validator: (String? value) {
+                final String password = value ?? '';
+                if (password.isEmpty) {
+                  return context.tr('profile.newPasswordRequired');
+                }
+                if (password.length < 6) {
+                  return context.tr('profile.passwordTooShort');
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 14),
+            ProfilePasswordField(
+              controller: _confirmPasswordController,
+              labelText: context.tr('profile.confirmPassword'),
+              primaryColor: _primaryColor,
+              obscureText: _hideConfirmPassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {
+                if (!_isChangingPassword) {
+                  _changePassword();
+                }
+              },
+              onToggleVisibility: () {
+                setState(() {
+                  _hideConfirmPassword = !_hideConfirmPassword;
+                });
+              },
+              validator: (String? value) {
+                if ((value ?? '').isEmpty) {
+                  return context.tr('profile.confirmPasswordRequired');
+                }
+                if (value != _newPasswordController.text) {
+                  return context.tr('profile.passwordMismatch');
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+            ChangePasswordButton(
+              isChanging: _isChangingPassword,
+              primaryColor: _primaryColor,
+              onPressed: _isChangingPassword ? null : _changePassword,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -233,7 +474,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: const Text('Thông tin cá nhân'),
+        title: Text(context.tr('settings.personalInfo')),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.white,
@@ -244,48 +485,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            ProfileAvatarSection(
-                              avatarBytes: _selectedAvatarBytes,
-                              avatarUrl: _profile.avatarUrl,
-                              primaryColor: _primaryColor,
-                              onChangeAvatar: _pickAvatar,
+                            child: Column(
+                              children: [
+                                ProfileAvatarSection(
+                                  avatarBytes: _selectedAvatarBytes,
+                                  avatarUrl: _profile.avatarUrl,
+                                  primaryColor: _primaryColor,
+                                  onChangeAvatar: _pickAvatar,
+                                ),
+                                const SizedBox(height: 24),
+                                ProfileNameField(
+                                  controller: _nameController,
+                                  primaryColor: _primaryColor,
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 24),
-                            ProfileNameField(
-                              controller: _nameController,
-                              primaryColor: _primaryColor,
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 24),
+                          SaveProfileButton(
+                            isSaving: _isSaving,
+                            primaryColor: _primaryColor,
+                            onPressed: _isSaving ? null : _saveProfile,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                      SaveProfileButton(
-                        isSaving: _isSaving,
-                        primaryColor: _primaryColor,
-                        onPressed: _isSaving ? null : _saveProfile,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildPasswordSection(context),
+                  ],
                 ),
               ),
             ),
@@ -320,7 +568,7 @@ class ProfileAvatarSection extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: primaryColor.withOpacity(0.18),
+                  color: primaryColor.withValues(alpha: 0.18),
                   width: 4,
                 ),
               ),
@@ -353,7 +601,7 @@ class ProfileAvatarSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Cập nhật ảnh đại diện',
+          context.tr('profile.updateAvatar'),
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -362,7 +610,7 @@ class ProfileAvatarSection extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Chọn ảnh từ thư viện để thay đổi hồ sơ của bạn',
+          context.tr('profile.avatarHelp'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
@@ -418,8 +666,8 @@ class ProfileNameField extends StatelessWidget {
       controller: controller,
       textInputAction: TextInputAction.done,
       decoration: InputDecoration(
-        labelText: 'Tên người dùng',
-        hintText: 'Nhập tên hiển thị của bạn',
+        labelText: context.tr('profile.usernameLabel'),
+        hintText: context.tr('profile.usernameHint'),
         prefixIcon: Icon(Icons.person_outline, color: primaryColor),
         filled: true,
         fillColor: const Color(0xFFF7F9F6),
@@ -440,15 +688,123 @@ class ProfileNameField extends StatelessWidget {
         final String trimmedValue = value?.trim() ?? '';
 
         if (trimmedValue.isEmpty) {
-          return 'Tên không được để trống';
+          return context.tr('profile.nameRequired');
         }
 
         if (trimmedValue.length < 2) {
-          return 'Tên phải có tối thiểu 2 ký tự';
+          return context.tr('profile.nameTooShort');
         }
 
         return null;
       },
+    );
+  }
+}
+
+class ProfilePasswordField extends StatelessWidget {
+  const ProfilePasswordField({
+    super.key,
+    required this.controller,
+    required this.labelText,
+    required this.primaryColor,
+    required this.obscureText,
+    required this.onToggleVisibility,
+    required this.validator,
+    this.textInputAction = TextInputAction.next,
+    this.onFieldSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String labelText;
+  final Color primaryColor;
+  final bool obscureText;
+  final VoidCallback onToggleVisibility;
+  final String? Function(String?) validator;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      textInputAction: textInputAction,
+      onFieldSubmitted: onFieldSubmitted,
+      decoration: InputDecoration(
+        labelText: labelText,
+        prefixIcon: Icon(Icons.lock_outline_rounded, color: primaryColor),
+        suffixIcon: IconButton(
+          onPressed: onToggleVisibility,
+          icon: Icon(
+            obscureText ? Icons.visibility_off_outlined : Icons.visibility,
+            color: Colors.grey[600],
+          ),
+        ),
+        filled: true,
+        fillColor: const Color(0xFFF7F9F6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: primaryColor, width: 1.4),
+        ),
+      ),
+      validator: validator,
+    );
+  }
+}
+
+class ChangePasswordButton extends StatelessWidget {
+  const ChangePasswordButton({
+    super.key,
+    required this.isChanging,
+    required this.primaryColor,
+    required this.onPressed,
+  });
+
+  final bool isChanging;
+  final Color primaryColor;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primaryColor,
+          side: BorderSide(color: primaryColor.withValues(alpha: 0.45)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        icon: isChanging
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                ),
+              )
+            : const Icon(Icons.lock_reset_rounded),
+        label: Text(
+          isChanging
+              ? context.tr('profile.changingPassword')
+              : context.tr('profile.changePasswordButton'),
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -488,9 +844,9 @@ class SaveProfileButton extends StatelessWidget {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Text(
-                'Lưu thay đổi',
-                style: TextStyle(
+            : Text(
+                context.tr('profile.saveChanges'),
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),

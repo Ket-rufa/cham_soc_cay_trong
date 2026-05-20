@@ -176,14 +176,36 @@ class _PlantIdentifyResultScreenState extends State<PlantIdentifyResultScreen> {
       var response = await request.send();
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Đã lưu vào Vườn!"), backgroundColor: Colors.green));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("✅ Đã lưu vào Vườn!"),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
           Navigator.pop(context); 
         }
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Lỗi lưu: ${response.statusCode}"), backgroundColor: Colors.red));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("❌ Lỗi lưu: ${response.statusCode}"),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Lỗi kết nối: $e"), backgroundColor: Colors.red));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("❌ Lỗi kết nối: $e"),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

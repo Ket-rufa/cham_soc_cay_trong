@@ -112,6 +112,39 @@ class AuthController extends Controller
         ]);
     }
 
+    public function changePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer|exists:users,id',
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 400,
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        $user = User::findOrFail($request->user_id);
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'Mật khẩu hiện tại không đúng',
+            ], 422);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Đổi mật khẩu thành công',
+        ]);
+    }
+
     public function showAvatar(Request $request, int $userId)
     {
         $user = User::findOrFail($userId);
