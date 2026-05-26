@@ -90,20 +90,10 @@ class _MyGardenTabState extends State<MyGardenTab> {
                   itemCount: _myPlants.length,
                   itemBuilder: (context, index) {
                     final plant = _myPlants[index];
-
-                    // Xử lý link ảnh (Có thể là link online hoặc link upload nội bộ)
-                    String imageUrl = plant['image'] ?? "";
-                    ImageProvider imageProvider;
-
-                    if (imageUrl.startsWith('http')) {
-                      imageProvider =
-                          NetworkImage(Config.getImageUrl(imageUrl), headers: Config.imageHeaders);
-                    } else {
-                      // Nếu là ảnh upload local (uploads/...) thì phải thêm domain
-                      // Lưu ý: Config.apiUrl thường có dạng .../api, ta cần bỏ /api để lấy base
-                      String baseUrl = Config.apiUrl.replaceAll('/api', '');
-                      imageProvider = NetworkImage('$baseUrl/$imageUrl', headers: Config.imageHeaders);
-                    }
+                    final plantMap = plant is Map
+                        ? Map<String, dynamic>.from(plant)
+                        : <String, dynamic>{};
+                    final imageUrl = Config.getPlantImageUrl(plantMap);
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -128,13 +118,25 @@ class _MyGardenTabState extends State<MyGardenTab> {
                             child: SizedBox(
                               width: 100,
                               height: 100,
-                              child: Image(
-                                image: imageProvider,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                    color: Colors.grey[200],
-                                    child: const Icon(Icons.image)),
-                              ),
+                              child: imageUrl.isEmpty
+                                  ? Container(
+                                      color: Colors.grey[200],
+                                      child: const Icon(Icons.image),
+                                    )
+                                  : Image.network(
+                                      imageUrl,
+                                      headers: Config.getImageHeaders(imageUrl),
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, error, ___) {
+                                        debugPrint(
+                                          '[MyGardenTab] Failed image $imageUrl | $error',
+                                        );
+                                        return Container(
+                                          color: Colors.grey[200],
+                                          child: const Icon(Icons.image),
+                                        );
+                                      },
+                                    ),
                             ),
                           ),
 

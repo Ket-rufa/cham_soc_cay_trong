@@ -63,8 +63,8 @@ class _PlantLibraryGrid extends StatefulWidget {
 }
 
 class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
-  List _allPlants = [];
-  List _foundPlants = [];
+  List<Map<String, dynamic>> _allPlants = [];
+  List<Map<String, dynamic>> _foundPlants = [];
   bool _isLoading = true;
   bool _hasError = false;
 
@@ -82,21 +82,30 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
     });
 
     try {
-      final url = Uri.parse(
-          '${Config.apiUrl}/library?type=${widget.categoryType}');
-      final response =
-          await http.get(url).timeout(const Duration(seconds: 15));
+      final url =
+          Uri.parse('${Config.apiUrl}/library?type=${widget.categoryType}');
+      final response = await http.get(url).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        final data = (jsonResponse['data'] as List?) ?? [];
+        final rawData = jsonResponse['data'];
+        final data = rawData is List
+            ? rawData
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList()
+            : <Map<String, dynamic>>[];
 
-        // DEBUG: log các record bị thiếu image_url
+        debugPrint('[PlantCat] Loaded ${data.length} plants from $url');
         for (final plant in data) {
-          final rawUrl = plant['image_url'];
-          if (rawUrl == null || (rawUrl as String).trim().isEmpty) {
-            debugPrint(
-                '[PlantCat] ⚠️  No image_url: ${plant['name']}');
+          final rawUrl = Config.getPlantImageSource(plant);
+          final resolvedUrl = Config.getImageUrl(rawUrl);
+          debugPrint(
+            '[PlantCat] image ${plant['id'] ?? ''} ${plant['name'] ?? ''}: '
+            'raw="$rawUrl" resolved="$resolvedUrl"',
+          );
+          if (rawUrl.isEmpty) {
+            debugPrint('[PlantCat] Missing image field: ${plant['name']}');
           }
         }
 
@@ -162,14 +171,13 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
               style: const TextStyle(fontSize: 15),
               decoration: InputDecoration(
                 hintText: context.tr('plantList.searchHint'),
-                hintStyle: TextStyle(
-                    color: Colors.grey.shade400, fontSize: 15),
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
                 prefixIcon: const Icon(Icons.search_rounded,
                     color: Color(0xFF25BB57), size: 22),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 16),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
@@ -180,8 +188,8 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(
-                      color: Color(0xFF25BB57), width: 1.5),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF25BB57), width: 1.5),
                 ),
               ),
             ),
@@ -197,8 +205,7 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
                   : _foundPlants.isEmpty
                       ? _buildEmptyState(context)
                       : GridView.builder(
-                          padding:
-                              const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
@@ -212,8 +219,7 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
                             final plant = _foundPlants[index];
                             return _PlantCard(
                               plant: plant,
-                              onTap: () =>
-                                  _navigateToDetail(context, plant),
+                              onTap: () => _navigateToDetail(context, plant),
                             );
                           },
                         ),
@@ -222,17 +228,20 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
     );
   }
 
-  void _navigateToDetail(BuildContext context, dynamic plant) {
+  void _navigateToDetail(BuildContext context, Map<String, dynamic> plant) {
+    final resolvedImageUrl = Config.getPlantImageUrl(plant);
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => LibraryDetailScreen(
-          imagePath: Config.getImageUrl(plant['image_url']),
+          imagePath: resolvedImageUrl,
           plantData: {
             'name_vi': plant['name'],
+            'image_url': resolvedImageUrl,
             'scientific_name': plant['scientific_name'] ?? '',
-            'description': plant['description'] ??
-                context.tr('plantList.noDescription'),
+            'description':
+                plant['description'] ?? context.tr('plantList.noDescription'),
             'family': plant['family'],
             'genus': plant['genus'],
             'light': plant['light'],
@@ -272,8 +281,7 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.wifi_off_rounded,
-              size: 64, color: Colors.grey.shade300),
+          Icon(Icons.wifi_off_rounded, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
           Text(
             'Không thể tải dữ liệu\nKiểm tra kết nối mạng',
@@ -303,8 +311,7 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off_rounded,
-              size: 60, color: Colors.grey.shade300),
+          Icon(Icons.search_off_rounded, size: 60, color: Colors.grey.shade300),
           const SizedBox(height: 16),
           Text(
             context.tr('plantList.empty'),
@@ -320,7 +327,7 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
 // PLANT CARD — Stateless, tách riêng để tránh rebuild toàn grid
 // ============================================================
 class _PlantCard extends StatelessWidget {
-  final dynamic plant;
+  final Map<String, dynamic> plant;
   final VoidCallback onTap;
 
   const _PlantCard({required this.plant, required this.onTap});
@@ -373,7 +380,7 @@ class _PlantCard extends StatelessWidget {
                 Expanded(
                   flex: 13,
                   child: _PlantImage(
-                    imageUrl: plant['image_url'],
+                    imageUrl: Config.getPlantImageSource(plant),
                     plantName: plant['name'] ?? 'Cây',
                   ),
                 ),
@@ -435,52 +442,52 @@ class _PlantImage extends StatelessWidget {
   final String? imageUrl;
   final String plantName;
 
-  static const Map<String, String> _wikiHeaders = {
-    // Wikipedia yêu cầu User-Agent mô tả app, không được để trống
-    'User-Agent': 'ChamSocCayTrong/1.0 (Flutter mobile app; educational)',
-    'Referer': 'https://vi.wikipedia.org/',
-  };
-
   const _PlantImage({required this.imageUrl, required this.plantName});
 
   @override
   Widget build(BuildContext context) {
     final resolved = Config.getImageUrl(imageUrl);
 
-    // URL rỗng hoặc invalid -> hiển thị placeholder ngay
     if (resolved.isEmpty) {
-      debugPrint('[PlantImage] ⚠️  No image_url for: $plantName');
+      debugPrint('[PlantImage] No image_url for $plantName');
       return _buildPlaceholder();
     }
 
-    // Chọn headers phù hợp: Wikipedia dùng header riêng
-    final headers = resolved.contains('wikimedia.org') ||
-            resolved.contains('wikipedia.org')
-        ? _wikiHeaders
-        : Config.imageHeaders;
+    debugPrint(
+      '[PlantImage] Load $plantName: raw="$imageUrl" resolved="$resolved"',
+    );
 
+    return _buildNetworkImage(resolved);
+  }
+
+  Widget _buildNetworkImage(String resolved, {bool allowProxyFallback = true}) {
     return Image.network(
       resolved,
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      headers: headers,
-      // loadingBuilder: hiện skeleton trong khi đang tải
-      // QUAN TRỌNG: callback này được gọi bởi Flutter framework,
-      // KHÔNG được gọi setState bên trong — đây là nguyên nhân bug cũ
+      headers: Config.getImageHeaders(resolved),
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) {
-          // Ảnh đã load xong -> hiện ảnh với fade-in qua AnimatedSwitcher
           return child;
         }
-        // Đang tải -> hiện skeleton shimmer
         return _buildLoadingShimmer(loadingProgress);
       },
       errorBuilder: (context, error, stackTrace) {
-        // Log lỗi để debug
         debugPrint(
-            '[PlantImage] ❌ Failed to load image for $plantName: $resolved\n  Error: $error');
-        return _buildPlaceholder();
+          '[PlantImage] Failed $plantName: $resolved | $error',
+        );
+
+        final proxyUrl =
+            allowProxyFallback && Config.canUseProxyFallback(resolved)
+                ? Config.getImageProxyUrl(resolved)
+                : "";
+        if (proxyUrl.isNotEmpty && proxyUrl != resolved) {
+          debugPrint('[PlantImage] Retry via backend proxy: $proxyUrl');
+          return _buildNetworkImage(proxyUrl, allowProxyFallback: false);
+        }
+
+        return _buildPlaceholder(label: 'Lỗi tải ảnh');
       },
     );
   }
@@ -495,8 +502,10 @@ class _PlantImage extends StatelessWidget {
     return _AnimatedShimmer(progress: progress);
   }
 
-  Widget _buildPlaceholder() {
+  Widget _buildPlaceholder({String label = 'Chưa có ảnh'}) {
     return Container(
+      width: double.infinity,
+      height: double.infinity,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
@@ -521,7 +530,9 @@ class _PlantImage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Chưa có ảnh',
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 10,
               color: Colors.green.shade700,
@@ -574,13 +585,15 @@ class _AnimatedShimmerState extends State<_AnimatedShimmer>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) => Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color.lerp(
-                  const Color(0xFFE0E0E0), const Color(0xFFF5F5F5), _anim.value)!,
-              Color.lerp(
-                  const Color(0xFFF5F5F5), const Color(0xFFE0E0E0), _anim.value)!,
+              Color.lerp(const Color(0xFFE0E0E0), const Color(0xFFF5F5F5),
+                  _anim.value)!,
+              Color.lerp(const Color(0xFFF5F5F5), const Color(0xFFE0E0E0),
+                  _anim.value)!,
             ],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,

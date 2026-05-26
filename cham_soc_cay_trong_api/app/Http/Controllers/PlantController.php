@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Plant;
 use Illuminate\Support\Facades\DB; // <--- 1. Thêm dòng này để sửa lỗi gạch đỏ
+use Illuminate\Support\Facades\File;
 
 class PlantController extends Controller
 {
     // API: GET /plants
-    public function index()
+    public function index(Request $request)
     {
         // 1. Lấy danh sách cây trong vườn (Mới nhất lên đầu)
         $myPlants = Plant::orderBy('id', 'desc')->get();
@@ -18,7 +19,7 @@ class PlantController extends Controller
         $library = DB::table('plant_libraries')->get();
 
         // 3. Ghép thông tin (Magic Step ✨)
-        $enrichedPlants = $myPlants->map(function ($plant) use ($library) {
+        $enrichedPlants = $myPlants->map(function ($plant) use ($library, $request) {
             // Ép kiểu sang chuỗi (string) để tránh lỗi nếu tên cây bị null
             $plantName = (string) $plant->name;
 
@@ -49,11 +50,24 @@ class PlantController extends Controller
                 $plantData['pruning']         = $libraryInfo->pruning ?? '';
                 $plantData['propagation']     = $libraryInfo->propagation ?? '';
                 $plantData['pests']           = $libraryInfo->pests ?? '';
+                $plantImage = $plant->image_url ?? $plant->image ?? null;
+                $plantData['image_url'] = $this->resolveImageUrl(
+                    $plantImage ?: ($libraryInfo->image_url ?? null),
+                    $request
+                );
+                $plantData['image'] = $plantData['image_url'];
                 
                 return $plantData;
             }
 
-            return $plant; // Nếu không thấy thì trả về nguyên bản
+            $plantData = $plant->toArray();
+            $plantData['image_url'] = $this->resolveImageUrl(
+                $plant->image_url ?? $plant->image ?? null,
+                $request
+            );
+            $plantData['image'] = $plantData['image_url'];
+
+            return $plantData; // Nếu không thấy thì trả về nguyên bản
         });
 
         return response()->json([
@@ -93,13 +107,17 @@ class PlantController extends Controller
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
                 $filename = time() . '_' . $file->getClientOriginalName();
-                $file->move(public_path('uploads'), $filename);
-                $plant->image = 'uploads/' . $filename;
+                $uploadDirectory = public_path('uploads/plants');
+                if (!File::exists($uploadDirectory)) {
+                    File::makeDirectory($uploadDirectory, 0755, true);
+                }
+                $file->move($uploadDirectory, $filename);
+                $plant->image_url = 'uploads/plants/' . $filename;
             } elseif ($request->filled('image_url')) {
                 // Lưu link ảnh từ thư viện
-                $plant->image = $request->image_url;
+                $plant->image_url = $request->image_url;
             } else {
-                $plant->image = 'uploads/default.png';
+                $plant->image_url = null;
             }
 
             // 3. Lưu
@@ -139,11 +157,64 @@ class PlantController extends Controller
                 ],
             ]);
 
-            return response()->json(['status' => 200, 'message' => 'Lưu thành công'], 200);
+            return response()->json([
+                'status' => 200,
+                'message' => 'Lưu thành công',
+                'data' => [
+                    'id' => $plant->id,
+                    'name' => $plant->name,
+                    'image_url' => $this->resolveImageUrl($plant->image_url, $request),
+                ],
+            ], 200);
 
         } catch (\Exception $e) {
             // Trả về lỗi chi tiết
             return response()->json(['status' => 500, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    private function resolveImageUrl(?string $url, Request $request): ?string
+    {
+        $trimmed = trim((string) $url);
+        if ($trimmed === '' || strtolower($trimmed) === 'null') {
+            return null;
+        }
+
+        $trimmed = str_replace('\\', '/', $trimmed);
+        $baseUrl = $request->getSchemeAndHttpHost();
+
+        if (str_starts_with($trimmed, '//')) {
+            return $request->getScheme() . ':' . $trimmed;
+        }
+
+        if (preg_match('/^https?:\/\//i', $trimmed)) {
+            return preg_replace(
+                '/^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?/i',
+                $baseUrl,
+                $trimmed
+            );
+        }
+
+        $path = $this->normalizeRelativeImagePath($trimmed);
+        if ($path === '') {
+            return null;
+        }
+
+        return $baseUrl . '/' . ltrim($path, '/');
+    }
+
+    private function normalizeRelativeImagePath(string $path): string
+    {
+        $path = trim($path);
+        $publicIndex = stripos($path, '/public/');
+        if ($publicIndex !== false) {
+            $path = substr($path, $publicIndex + strlen('/public/'));
+        }
+
+        $path = preg_replace('/^public\/+/i', '', $path);
+        $path = preg_replace('/^storage\/app\/public\/+/i', 'storage/', $path);
+        $path = preg_replace('/^public\/storage\/+/i', 'storage/', $path);
+
+        return ltrim((string) $path, '/');
     }
 }

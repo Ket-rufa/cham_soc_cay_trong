@@ -1,47 +1,178 @@
 class Config {
-  // static const String serverIp = "localhost";
+  // Use the LAN IP/domain of the machine that runs the Laravel API.
+  // Android phones cannot reach "localhost" on your laptop.
   static const String serverIp = "192.168.1.10";
-  // static const String serverIp = "192.168.1.4";
   static const String serverPort = "8000";
-  static const String apiUrl = "http://$serverIp:8000/api";
-  static const String imageBaseUrl = "http://$serverIp:$serverPort";
+  static const String backendBaseUrl = "http://$serverIp:$serverPort";
+  static const String apiUrl = "$backendBaseUrl/api";
+  static const String imageBaseUrl = backendBaseUrl;
   static const String plantNetApiKey = "2b109VgvlqVVbZXF5QrJDTbj";
 
   static const Map<String, String> imageHeaders = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'User-Agent': 'ChamSocCayTrong/1.0 (Flutter Android; image loader)',
+    'Accept':
+        'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
   };
 
-  static String getImageUrl(String? url) {
-    if (url == null || url.trim().isEmpty) return "";
-    final trimmed = url.trim();
+  static const Map<String, String> wikimediaImageHeaders = {
+    'User-Agent': 'ChamSocCayTrong/1.0 (Flutter Android; educational app)',
+    'Referer': 'https://commons.wikimedia.org/',
+    'Accept':
+        'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+  };
 
-    // 1) URL tương đối: bắt đầu bằng '/' (vd: /storage/images/hoa.jpg)
-    if (trimmed.startsWith('/')) {
-      return 'http://$serverIp:$serverPort$trimmed';
+  static const List<String> _imageKeys = [
+    'image_url',
+    'image',
+    'imageUrl',
+    'image_path',
+    'imagePath',
+    'thumbnail',
+    'thumbnail_url',
+    'photo',
+    'photo_url',
+    'main_image_url',
+    'avatar_url',
+  ];
+
+  static String getImageUrl(Object? value) {
+    final raw = _stringValue(value);
+    if (raw.isEmpty) return "";
+
+    final normalized = raw.replaceAll('\\', '/');
+    if (_isAssetPath(normalized)) return normalized;
+
+    if (normalized.startsWith('//')) {
+      return _normalizeAbsoluteUrl('https:$normalized');
     }
 
-    // 2) localhost hoặc 127.0.0.1 -> thay bằng IP máy chủ thật
-    if (trimmed.startsWith('http://localhost') ||
-        trimmed.startsWith('http://127.0.0.1')) {
-      return trimmed.replaceFirst(
-        RegExp(r'http:\/\/(localhost|127\.0\.0\.1)(:\d+)?'),
-        'http://$serverIp:$serverPort',
-      );
+    if (_hasHttpScheme(normalized)) {
+      return _normalizeAbsoluteUrl(normalized);
     }
 
-    // 3) Path không có scheme, không bắt đầu bằng '/' (vd: storage/images/hoa.jpg)
-    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-      return 'http://$serverIp:$serverPort/$trimmed';
-    }
-
-    // 4) URL đầy đủ hợp lệ -> trả về nguyên
-    return trimmed;
+    return _joinBackendUrl(_normalizeRelativePath(normalized));
   }
 
-  /// Kiểm tra URL có hợp lệ để load ảnh không
-  static bool isValidImageUrl(String? url) {
-    if (url == null || url.trim().isEmpty) return false;
+  static String getPlantImageSource(Map<dynamic, dynamic>? plant) {
+    if (plant == null) return "";
+
+    for (final key in _imageKeys) {
+      final value = _stringValue(plant[key]);
+      if (value.isNotEmpty) return value;
+    }
+
+    return "";
+  }
+
+  static String getPlantImageUrl(Map<dynamic, dynamic>? plant) {
+    return getImageUrl(getPlantImageSource(plant));
+  }
+
+  static bool isValidImageUrl(Object? value) {
+    final resolved = getImageUrl(value);
+    return resolved.isNotEmpty &&
+        (_isAssetPath(resolved) || _hasHttpScheme(resolved));
+  }
+
+  static bool isBackendUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    return _isLocalBackendHost(uri.host) || uri.host == serverIp;
+  }
+
+  static bool canUseProxyFallback(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !_hasHttpScheme(url)) return false;
+    return !isBackendUrl(url);
+  }
+
+  static String getImageProxyUrl(String url) {
     final resolved = getImageUrl(url);
-    return resolved.startsWith('http://') || resolved.startsWith('https://');
+    if (resolved.isEmpty) return "";
+    return "$apiUrl/image-proxy?url=${Uri.encodeComponent(resolved)}";
+  }
+
+  static Map<String, String> getImageHeaders(String url) {
+    final host = Uri.tryParse(url)?.host.toLowerCase() ?? "";
+    if (host.endsWith('wikimedia.org') || host.endsWith('wikipedia.org')) {
+      return wikimediaImageHeaders;
+    }
+    return imageHeaders;
+  }
+
+  static String _normalizeAbsoluteUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return url;
+
+    if (!_isLocalBackendHost(uri.host)) return url;
+
+    final replacement = uri.replace(
+      host: serverIp,
+      port: uri.hasPort ? uri.port : int.tryParse(serverPort),
+    );
+    return replacement.toString();
+  }
+
+  static String _normalizeRelativePath(String path) {
+    var value = path.trim();
+    if (value.isEmpty) return "";
+
+    final publicIndex = value.toLowerCase().lastIndexOf('/public/');
+    if (publicIndex >= 0) {
+      value = value.substring(publicIndex + '/public/'.length);
+    }
+
+    value = value.replaceFirst(RegExp(r'^public/+', caseSensitive: false), '');
+    value = value.replaceFirst(
+      RegExp(r'^storage/app/public/+', caseSensitive: false),
+      'storage/',
+    );
+    value = value.replaceFirst(
+      RegExp(r'^public/storage/+', caseSensitive: false),
+      'storage/',
+    );
+
+    while (value.startsWith('/')) {
+      value = value.substring(1);
+    }
+
+    return value;
+  }
+
+  static String _joinBackendUrl(String relativePath) {
+    if (relativePath.isEmpty) return "";
+    final encodedPath = Uri.encodeFull(relativePath);
+    return "$backendBaseUrl/$encodedPath";
+  }
+
+  static bool _hasHttpScheme(String value) {
+    final lower = value.toLowerCase();
+    return lower.startsWith('http://') || lower.startsWith('https://');
+  }
+
+  static bool _isAssetPath(String value) {
+    return value.startsWith('assets/');
+  }
+
+  static bool _isLocalBackendHost(String host) {
+    final lower = host.toLowerCase();
+    return lower == 'localhost' ||
+        lower == '127.0.0.1' ||
+        lower == '0.0.0.0' ||
+        lower == '10.0.2.2' ||
+        lower == '::1';
+  }
+
+  static String _stringValue(Object? value) {
+    if (value == null) return "";
+    final text = value.toString().trim();
+    if (text.isEmpty) return "";
+
+    final lower = text.toLowerCase();
+    if (lower == 'null' || lower == 'undefined' || lower == 'none') {
+      return "";
+    }
+
+    return text;
   }
 }

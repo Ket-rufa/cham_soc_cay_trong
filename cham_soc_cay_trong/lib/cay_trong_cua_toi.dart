@@ -430,7 +430,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
+              icon:
+                  const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -451,7 +452,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(
               tooltip: context.tr('garden.reload'),
-              icon: const Icon(Icons.refresh_rounded, color: _primaryGreen, size: 26),
+              icon: const Icon(Icons.refresh_rounded,
+                  color: _primaryGreen, size: 26),
               onPressed: _fetchMyGarden,
             ),
           ),
@@ -618,7 +620,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
     );
   }
 
-  Widget _buildStatTile(IconData icon, String label, String value, Color iconBg) {
+  Widget _buildStatTile(
+      IconData icon, String label, String value, Color iconBg) {
     Color iconColor;
     if (icon == Icons.local_florist_rounded) {
       iconColor = const Color(0xFF2E7D32);
@@ -707,7 +710,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
         decoration: InputDecoration(
           hintText: context.tr('garden.searchHint'),
           hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
-          prefixIcon: const Icon(Icons.search_rounded, color: _primaryGreen, size: 22),
+          prefixIcon:
+              const Icon(Icons.search_rounded, color: _primaryGreen, size: 22),
           suffixIcon: _searchQuery.isEmpty
               ? null
               : IconButton(
@@ -896,7 +900,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF2E7D32).withOpacity(0.15),
+                                  color:
+                                      const Color(0xFF2E7D32).withOpacity(0.15),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -909,7 +914,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
                                 foregroundColor: Colors.white,
                                 shadowColor: Colors.transparent,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -917,7 +923,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.water_drop_rounded, size: 15),
+                                  const Icon(Icons.water_drop_rounded,
+                                      size: 15),
                                   const SizedBox(width: 4),
                                   Text(
                                     context.tr('garden.watered'),
@@ -936,7 +943,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
                           onPressed: () => _openDetail(plant),
                           style: TextButton.styleFrom(
                             foregroundColor: _primaryGreen,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -952,7 +960,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
                                 ),
                               ),
                               const SizedBox(width: 2),
-                              const Icon(Icons.arrow_forward_ios_rounded, size: 10),
+                              const Icon(Icons.arrow_forward_ios_rounded,
+                                  size: 10),
                             ],
                           ),
                         ),
@@ -1032,14 +1041,56 @@ class _MyGardenTabState extends State<MyGardenTab> {
       );
     }
 
+    return _buildNetworkPlantImage(imageUrl, plant);
+  }
+
+  Widget _buildNetworkPlantImage(
+    String imageUrl,
+    Map<String, dynamic> plant, {
+    bool allowProxyFallback = true,
+  }) {
+    debugPrint(
+      '[GardenImage] Load ${_stringValue(plant['name'])}: $imageUrl',
+    );
+
     return Image.network(
       imageUrl,
-      headers: Config.imageHeaders,
+      headers: Config.getImageHeaders(imageUrl),
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
-        color: Colors.green.shade50,
-        child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
-      ),
+      width: double.infinity,
+      height: double.infinity,
+      loadingBuilder: (_, child, progress) {
+        if (progress == null) return child;
+        return Container(
+          color: Colors.green.shade50,
+          child: const Center(
+            child: CircularProgressIndicator(
+              color: _primaryGreen,
+              strokeWidth: 2,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (_, error, ___) {
+        debugPrint('[GardenImage] Failed $imageUrl | $error');
+        final proxyUrl =
+            allowProxyFallback && Config.canUseProxyFallback(imageUrl)
+                ? Config.getImageProxyUrl(imageUrl)
+                : "";
+        if (proxyUrl.isNotEmpty && proxyUrl != imageUrl) {
+          return _buildNetworkPlantImage(
+            proxyUrl,
+            plant,
+            allowProxyFallback: false,
+          );
+        }
+        return Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: Colors.green.shade50,
+          child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+        );
+      },
     );
   }
 
@@ -1085,13 +1136,7 @@ class _MyGardenTabState extends State<MyGardenTab> {
   }
 
   String _resolvedImageUrl(Map<String, dynamic> plant) {
-    final rawImage = _stringValue(plant['image'] ?? plant['image_url']);
-    if (rawImage.isEmpty) return '';
-    if (rawImage.startsWith('http')) return Config.getImageUrl(rawImage);
-
-    final baseUrl = Config.apiUrl.replaceAll('/api', '');
-    final normalizedPath = rawImage.startsWith('/') ? rawImage : '/$rawImage';
-    return '$baseUrl$normalizedPath';
+    return Config.getPlantImageUrl(plant);
   }
 
   List<Map<String, dynamic>> _careLogsOf(Map<String, dynamic> plant) {

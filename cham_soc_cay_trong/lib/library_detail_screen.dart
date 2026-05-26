@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:cham_soc_cay_trong/config.dart';
 import 'package:flutter/cupertino.dart';
@@ -69,15 +70,34 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
   Future<void> _saveToGarden() async {
     setState(() => _isSaving = true);
     try {
-      final response = await http.post(
-        Uri.parse('${Config.apiUrl}/plants'),
-        body: {
-          'name': _plantName,
-          'location': 'Sân vườn',
-          'image_url': widget.imagePath,
-        },
-        headers: {'Accept': 'application/json'},
-      );
+      final localImage = _localImageFile(widget.imagePath);
+      late http.Response response;
+
+      if (localImage != null) {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('${Config.apiUrl}/plants'),
+        )
+          ..headers['Accept'] = 'application/json'
+          ..fields['name'] = _plantName
+          ..fields['location'] = 'Sân vườn'
+          ..files.add(await http.MultipartFile.fromPath(
+            'image',
+            localImage.path,
+          ));
+
+        response = await http.Response.fromStream(await request.send());
+      } else {
+        response = await http.post(
+          Uri.parse('${Config.apiUrl}/plants'),
+          body: {
+            'name': _plantName,
+            'location': 'Sân vườn',
+            'image_url': Config.getImageUrl(widget.imagePath),
+          },
+          headers: {'Accept': 'application/json'},
+        );
+      }
 
       if (!mounted) return;
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -500,29 +520,73 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
   }
 
   Widget _buildHeaderImage() {
-    final imageUrl = _resolvedImageUrl(widget.imagePath);
-    if (imageUrl.isEmpty) {
-      return Container(
-        color: Colors.green.shade100,
-        child: const Icon(
-          Icons.local_florist_rounded,
-          color: _primaryGreen,
-          size: 72,
-        ),
+    final localImage = _localImageFile(widget.imagePath);
+    if (localImage != null) {
+      return Image.file(
+        localImage,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, error, ___) {
+          debugPrint(
+              '[LibraryDetail] Failed local image: ${localImage.path} | $error');
+          return _buildImagePlaceholder(Icons.broken_image_outlined);
+        },
       );
     }
 
+    final imageUrl = _resolvedImageUrl(widget.imagePath);
+    if (imageUrl.isEmpty) {
+      return _buildImagePlaceholder(Icons.local_florist_rounded, size: 72);
+    }
+
+    debugPrint('[LibraryDetail] Load header image: $imageUrl');
+    return _buildNetworkHeaderImage(imageUrl);
+  }
+
+  Widget _buildNetworkHeaderImage(
+    String imageUrl, {
+    bool allowProxyFallback = true,
+  }) {
     return Image.network(
       imageUrl,
-      headers: Config.imageHeaders,
+      headers: Config.getImageHeaders(imageUrl),
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
-        color: Colors.green.shade100,
-        child: const Icon(
-          Icons.broken_image_outlined,
-          color: _primaryGreen,
-          size: 56,
-        ),
+      width: double.infinity,
+      height: double.infinity,
+      loadingBuilder: (_, child, progress) {
+        if (progress == null) return child;
+        return const Center(
+          child: CircularProgressIndicator(color: _primaryGreen),
+        );
+      },
+      errorBuilder: (_, error, ___) {
+        debugPrint('[LibraryDetail] Failed header image: $imageUrl | $error');
+        final proxyUrl =
+            allowProxyFallback && Config.canUseProxyFallback(imageUrl)
+                ? Config.getImageProxyUrl(imageUrl)
+                : "";
+        if (proxyUrl.isNotEmpty && proxyUrl != imageUrl) {
+          debugPrint('[LibraryDetail] Retry header via proxy: $proxyUrl');
+          return _buildNetworkHeaderImage(
+            proxyUrl,
+            allowProxyFallback: false,
+          );
+        }
+        return _buildImagePlaceholder(Icons.broken_image_outlined, size: 56);
+      },
+    );
+  }
+
+  Widget _buildImagePlaceholder(IconData icon, {double size = 72}) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.green.shade100,
+      child: Icon(
+        icon,
+        color: _primaryGreen,
+        size: size,
       ),
     );
   }
@@ -1694,11 +1758,23 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
   String _resolvedImageUrl(String rawPath) {
     final rawImage = rawPath.trim();
     if (rawImage.isEmpty || rawImage == 'null') return '';
-    if (rawImage.startsWith('http')) return Config.getImageUrl(rawImage);
+    if (_localImageFile(rawImage) != null) return rawImage;
+    return Config.getImageUrl(rawImage);
+  }
 
-    final baseUrl = Config.apiUrl.replaceAll('/api', '');
-    final normalizedPath = rawImage.startsWith('/') ? rawImage : '/$rawImage';
-    return '$baseUrl$normalizedPath';
+  File? _localImageFile(String rawPath) {
+    final path = rawPath.trim();
+    if (path.isEmpty ||
+        path == 'null' ||
+        path.startsWith('http://') ||
+        path.startsWith('https://') ||
+        path.startsWith('//') ||
+        path.startsWith('assets/')) {
+      return null;
+    }
+
+    final file = File(path);
+    return file.existsSync() ? file : null;
   }
 
   bool _hasLivingConditionData() {

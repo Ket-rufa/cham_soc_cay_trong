@@ -29,6 +29,8 @@ Route::post('/profile/update', [AuthController::class, 'updateProfile']);
 Route::post('/profile/change-password', [AuthController::class, 'changePassword']);
 Route::get('/profile/avatar/{userId}', [AuthController::class, 'showAvatar']);
 Route::get('/library', [PlantLibraryController::class, 'index']);
+Route::post('/library/cache-images', [PlantLibraryController::class, 'cacheImages']);
+Route::get('/image-proxy', [PlantLibraryController::class, 'imageProxy']);
 Route::post('/plants', [PlantController::class, 'store']);
 Route::get('/plant-info', [PlantInfoController::class, 'search']);
 Route::delete('/plants/{id}', [PlantController::class, 'destroy']);
