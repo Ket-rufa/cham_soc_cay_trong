@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cham_soc_cay_trong/config.dart';
+import 'package:cham_soc_cay_trong/custom_dialog.dart';
 import 'package:cham_soc_cay_trong/l10n/app_localizations.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -57,22 +58,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
 
         // Đăng ký thành công -> Quay về màn đăng nhập
-        showDialog(
+        await PremiumDialog.showPremiumAlertDialog(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(context.tr('register.successTitle')),
-            content: Text(context.tr('register.successMessage')),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx); // Đóng popup
-                  Navigator.pop(context); // Quay về màn Login
-                },
-                child: Text(context.tr('common.ok')),
-              )
-            ],
-          ),
+          title: context.tr('register.successTitle'),
+          message: context.tr('register.successMessage'),
+          buttonText: context.tr('common.ok'),
+          isSuccess: true,
         );
+        if (mounted) {
+          Navigator.pop(context); // Quay về màn Login
+        }
       } else {
         if (!mounted) {
           return;

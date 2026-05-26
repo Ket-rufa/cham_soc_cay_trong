@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 import 'package:cham_soc_cay_trong/config.dart';
+import 'package:cham_soc_cay_trong/custom_dialog.dart';
 import 'package:cham_soc_cay_trong/library_detail_screen.dart';
 import 'package:cham_soc_cay_trong/l10n/app_localizations.dart';
+import 'package:cham_soc_cay_trong/top_toast_util.dart';
+import 'package:cham_soc_cay_trong/local_notification_util.dart';
 
 enum CareTaskType {
   watering,
@@ -29,10 +33,80 @@ class _CareScheduleScreenState extends State<CareScheduleScreen> {
   List _todayTasks = [];
   List _upcomingTasks = [];
 
+  Timer? _notificationTimer;
+  final Set<int> _notifiedTaskIds = {};
+  final Map<int, DateTime> _taskDueDates = {};
+  late DateTime _screenOpenedTime;
+
   @override
   void initState() {
     super.initState();
+    _screenOpenedTime = DateTime.now();
+    LocalNotificationUtil.initialize();
     _fetchSchedules();
+    _startNotificationTimer();
+  }
+
+  @override
+  void dispose() {
+    _notificationTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startNotificationTimer() {
+    _notificationTimer?.cancel();
+    _notificationTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      _checkAndShowNotifications();
+    });
+  }
+
+  void _checkAndShowNotifications() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    final allTasks = [..._todayTasks, ..._upcomingTasks];
+
+    for (var task in allTasks) {
+      final id = task['id'];
+      if (id == null) continue;
+
+      final dueDate = _parseTaskDate(task['next_due_at']);
+      if (dueDate == null) continue;
+
+      // Nếu lịch hẹn bị thay đổi thời gian, reset trạng thái đã thông báo
+      if (_taskDueDates[id] != dueDate) {
+        _taskDueDates[id] = dueDate;
+        _notifiedTaskIds.remove(id);
+      }
+
+      if (_notifiedTaskIds.contains(id)) continue;
+
+      // Chỉ hiển thị thông báo nếu lịch hẹn nằm trong phạm vi hiển thị
+      // (Bắt đầu từ 1 phút trước khi mở trang đến hiện tại)
+      final isRelevantTime = dueDate.isAfter(_screenOpenedTime.subtract(const Duration(minutes: 1)));
+      final isDue = now.isAfter(dueDate) || now.isAtSameMomentAs(dueDate);
+
+      if (isRelevantTime && isDue) {
+        _notifiedTaskIds.add(id);
+
+        String type = (task['task_type'] ?? '').toString();
+        String plantName = task['plant']?['name'] ?? 'Cây không tên';
+        String translatedTask = _translateTask(type);
+
+        TopToast.show(
+          context,
+          'Đến giờ: $translatedTask cho $plantName!',
+          backgroundColor: _getColor(type),
+          icon: _getIcon(type),
+          duration: const Duration(seconds: 6),
+        );
+
+        LocalNotificationUtil.showNotification(
+          id: id,
+          title: 'Lịch chăm sóc cây',
+          body: 'Đến giờ: $translatedTask cho $plantName!',
+        );
+      }
+    }
   }
 
   Future<void> _fetchSchedules() async {
@@ -157,22 +231,13 @@ class _CareScheduleScreenState extends State<CareScheduleScreen> {
   }
 
   Future<void> _deleteTask(int id) async {
-    bool? confirm = await showDialog<bool>(
+    final bool confirm = await PremiumDialog.showPremiumConfirmDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xác nhận xoá'),
-        content: const Text('Bạn có chắc chắn muốn xoá ghi chú này không?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Huỷ', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xoá', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      title: 'Xác nhận xoá',
+      message: 'Bạn có chắc chắn muốn xoá ghi chú này không?',
+      confirmText: 'Xoá',
+      cancelText: 'Huỷ',
+      isDanger: true,
     );
 
     if (confirm != true) return;

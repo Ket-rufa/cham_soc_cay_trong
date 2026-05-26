@@ -21,6 +21,7 @@ dependencies:
   path: ^1.8.0
   shared_preferences: ^2.2.2
   translator: ^1.0.4+1
+  flutter_local_notifications: ^19.5.0
 
 
 

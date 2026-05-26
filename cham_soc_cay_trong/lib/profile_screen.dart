@@ -633,6 +633,7 @@ class ProfileAvatarSection extends StatelessWidget {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       return Image.network(
         Config.getImageUrl(avatarUrl!),
+        headers: Config.imageHeaders,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) {
           return Image.asset(

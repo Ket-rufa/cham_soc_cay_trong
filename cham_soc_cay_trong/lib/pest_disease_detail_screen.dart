@@ -478,6 +478,7 @@ class DiseaseImageFrame extends StatelessWidget {
 
     return Image.network(
       resolvedUrl,
+      headers: Config.imageHeaders,
       fit: BoxFit.cover,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) {

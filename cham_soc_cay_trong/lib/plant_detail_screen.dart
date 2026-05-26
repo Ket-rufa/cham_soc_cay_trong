@@ -94,6 +94,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
             imageUrl.isNotEmpty
                 ? Image.network(
                     fullImageUrl,
+                    headers: Config.imageHeaders,
                     width: double.infinity,
                     height: 250,
                     fit: BoxFit.cover,

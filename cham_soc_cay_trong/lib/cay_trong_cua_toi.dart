@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cham_soc_cay_trong/config.dart';
+import 'package:cham_soc_cay_trong/custom_dialog.dart';
 import 'package:cham_soc_cay_trong/l10n/app_localizations.dart';
 import 'package:cham_soc_cay_trong/library_detail_screen.dart';
 import 'package:cham_soc_cay_trong/top_toast_util.dart';
@@ -82,27 +83,14 @@ class _MyGardenTabState extends State<MyGardenTab> {
   Future<void> _deletePlant(dynamic id) async {
     if (id == null) return;
 
-    final bool confirm = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(context.tr('garden.confirmDeleteTitle')),
-            content: Text(context.tr('garden.confirmDeleteMessage')),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(context.tr('common.cancel')),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(
-                  context.tr('garden.delete'),
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    final bool confirm = await PremiumDialog.showPremiumConfirmDialog(
+      context: context,
+      title: context.tr('garden.confirmDeleteTitle'),
+      message: context.tr('garden.confirmDeleteMessage'),
+      confirmText: context.tr('garden.delete'),
+      cancelText: context.tr('common.cancel'),
+      isDanger: true,
+    );
 
     if (!confirm) return;
 
@@ -427,21 +415,45 @@ class _MyGardenTabState extends State<MyGardenTab> {
     return Scaffold(
       backgroundColor: _softBackground,
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ),
         title: Text(
           context.tr('garden.title'),
           style: const TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w700,
+            color: Color(0xFF1B5E20),
+            fontWeight: FontWeight.w900,
+            fontSize: 22,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: _softBackground,
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(
-            tooltip: context.tr('garden.reload'),
-            icon: const Icon(Icons.refresh, color: _primaryGreen),
-            onPressed: _fetchMyGarden,
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              tooltip: context.tr('garden.reload'),
+              icon: const Icon(Icons.refresh_rounded, color: _primaryGreen, size: 26),
+              onPressed: _fetchMyGarden,
+            ),
           ),
         ],
       ),
@@ -491,80 +503,156 @@ class _MyGardenTabState extends State<MyGardenTab> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _primaryGreen,
-        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1B5E20),
+            Color(0xFF2E7D32),
+            Color(0xFF4CAF50),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: _primaryGreen.withValues(alpha: 0.18),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF1B5E20).withOpacity(0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.tr('garden.hello'),
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -50,
+              top: -50,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            careText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              height: 1.25,
+            Positioned(
+              left: -30,
+              bottom: -50,
+              child: Container(
+                width: 130,
+                height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.05),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 2.25,
-            children: [
-              _buildStatTile(Icons.local_florist_rounded,
-                  context.tr('garden.totalPlants'), stats.total.toString()),
-              _buildStatTile(Icons.water_drop_rounded,
-                  context.tr('garden.needWater'), stats.needWater.toString()),
-              _buildStatTile(Icons.eco_rounded, context.tr('garden.fertilize'),
-                  stats.fertilizeSoon.toString()),
-              _buildStatTile(Icons.check_circle_rounded,
-                  context.tr('garden.healthy'), stats.healthy.toString()),
-            ],
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr('garden.hello'),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    careText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 2.25,
+                    children: [
+                      _buildStatTile(
+                        Icons.local_florist_rounded,
+                        context.tr('garden.totalPlants'),
+                        stats.total.toString(),
+                        const Color(0xFFE8F5E9),
+                      ),
+                      _buildStatTile(
+                        Icons.water_drop_rounded,
+                        context.tr('garden.needWater'),
+                        stats.needWater.toString(),
+                        const Color(0xFFE3F2FD),
+                      ),
+                      _buildStatTile(
+                        Icons.eco_rounded,
+                        context.tr('garden.fertilize'),
+                        stats.fertilizeSoon.toString(),
+                        const Color(0xFFFFF3E0),
+                      ),
+                      _buildStatTile(
+                        Icons.check_circle_rounded,
+                        context.tr('garden.healthy'),
+                        stats.healthy.toString(),
+                        const Color(0xFFE0F2F1),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatTile(IconData icon, String label, String value) {
+  Widget _buildStatTile(IconData icon, String label, String value, Color iconBg) {
+    Color iconColor;
+    if (icon == Icons.local_florist_rounded) {
+      iconColor = const Color(0xFF2E7D32);
+    } else if (icon == Icons.water_drop_rounded) {
+      iconColor = Colors.blue.shade700;
+    } else if (icon == Icons.eco_rounded) {
+      iconColor = Colors.orange.shade700;
+    } else {
+      iconColor = Colors.teal.shade700;
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: _primaryGreen.withValues(alpha: 0.12),
+              color: iconBg,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: _primaryGreen, size: 18),
+            child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -575,8 +663,8 @@ class _MyGardenTabState extends State<MyGardenTab> {
                 Text(
                   value,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
                     color: Colors.black87,
                   ),
                 ),
@@ -585,9 +673,9 @@ class _MyGardenTabState extends State<MyGardenTab> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -599,38 +687,53 @@ class _MyGardenTabState extends State<MyGardenTab> {
   }
 
   Widget _buildSearchField() {
-    return TextField(
-      controller: _searchController,
-      onChanged: (value) => setState(() => _searchQuery = value),
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: context.tr('garden.searchHint'),
-        prefixIcon: const Icon(Icons.search_rounded, color: _primaryGreen),
-        suffixIcon: _searchQuery.isEmpty
-            ? null
-            : IconButton(
-                tooltip: context.tr('garden.clearSearch'),
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() => _searchQuery = '');
-                },
-              ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _primaryGreen, width: 1.4),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) => setState(() => _searchQuery = value),
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(fontSize: 15),
+        decoration: InputDecoration(
+          hintText: context.tr('garden.searchHint'),
+          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
+          prefixIcon: const Icon(Icons.search_rounded, color: _primaryGreen, size: 22),
+          suffixIcon: _searchQuery.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: context.tr('garden.clearSearch'),
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey.shade100),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: _primaryGreen, width: 1.5),
+          ),
         ),
       ),
     );
@@ -646,25 +749,31 @@ class _MyGardenTabState extends State<MyGardenTab> {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
       child: Row(
         children: filters.map((filter) {
           final selected = _selectedFilter == filter.value;
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 8, bottom: 4, top: 4),
             child: ChoiceChip(
+              showCheckmark: false,
               label: Text(context.tr(filter.labelKey)),
               selected: selected,
               onSelected: (_) => setState(() => _selectedFilter = filter.value),
               selectedColor: _primaryGreen,
               backgroundColor: Colors.white,
+              elevation: selected ? 3 : 0,
+              shadowColor: _primaryGreen.withOpacity(0.3),
               side: BorderSide(
-                  color: selected ? _primaryGreen : Colors.grey.shade200),
+                  color: selected ? Colors.transparent : Colors.grey.shade200),
               labelStyle: TextStyle(
-                color: selected ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : Colors.grey.shade700,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w600,
+                fontSize: 13.5,
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+                  borderRadius: BorderRadius.circular(20)),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           );
@@ -679,143 +788,181 @@ class _MyGardenTabState extends State<MyGardenTab> {
     final health = _stringValue(plant['healthStatus'], fallback: 'healthy');
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
+        border: Border.all(color: Colors.green.shade50.withOpacity(0.4)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                width: 94,
-                height: 132,
-                child: _buildPlantImage(plant),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Plant Image
+              Hero(
+                tag: 'plant-img-${_plantKey(plant)}',
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: SizedBox(
+                    width: 100,
+                    height: 136,
+                    child: _buildPlantImage(plant),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _stringValue(plant['name'],
-                              fallback: 'Cây không tên'),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            height: 1.2,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: IconButton(
-                          tooltip: context.tr('garden.deletePlant'),
-                          padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.delete_outline_rounded,
-                              size: 21),
-                          color: Colors.redAccent,
-                          onPressed: () => _deletePlant(plant['id']),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  _buildStatusBadge(_careStatusLabel(status), badgeColor),
-                  const SizedBox(height: 8),
-                  _buildInfoLine(
-                    icon: Icons.health_and_safety_outlined,
-                    color: _healthStatusColor(health),
-                    text: _healthStatusLabel(health),
-                  ),
-                  const SizedBox(height: 5),
-                  _buildInfoLine(
-                    icon: Icons.water_drop_outlined,
-                    color: Colors.blue,
-                    text: _dueLabel(
-                      context.tr('garden.water'),
-                      _parseDate(plant['nextWateringDate']),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  _buildInfoLine(
-                    icon: Icons.eco_outlined,
-                    color: Colors.green.shade700,
-                    text: _dueLabel(
-                      context.tr('garden.fertilize'),
-                      _parseDate(plant['nextFertilizingDate']),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _markWatered(plant),
-                          icon: const Icon(Icons.water_drop_rounded, size: 16),
-                          label: Text(context.tr('garden.watered')),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryGreen,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            textStyle: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 9),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+              const SizedBox(width: 14),
+              // Plant Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _stringValue(plant['name'],
+                                fallback: 'Cây không tên'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1E293B),
                             ),
                           ),
                         ),
+                        // Mini Red Round Button for Deleting
+                        GestureDetector(
+                          onTap: () => _deletePlant(plant['id']),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.delete_outline_rounded,
+                              size: 16,
+                              color: Colors.red.shade600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    _buildStatusBadge(_careStatusLabel(status), badgeColor),
+                    const SizedBox(height: 10),
+                    _buildInfoLine(
+                      icon: Icons.health_and_safety_rounded,
+                      color: _healthStatusColor(health),
+                      text: _healthStatusLabel(health),
+                    ),
+                    _buildInfoLine(
+                      icon: Icons.water_drop_rounded,
+                      color: Colors.blue,
+                      text: _dueLabel(
+                        context.tr('garden.water'),
+                        _parseDate(plant['nextWateringDate']),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
+                    ),
+                    _buildInfoLine(
+                      icon: Icons.eco_rounded,
+                      color: Colors.green.shade700,
+                      text: _dueLabel(
+                        context.tr('garden.fertilize'),
+                        _parseDate(plant['nextFertilizingDate']),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF2E7D32).withOpacity(0.15),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () => _markWatered(plant),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: Colors.white,
+                                shadowColor: Colors.transparent,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.water_drop_rounded, size: 15),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    context.tr('garden.watered'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        TextButton(
                           onPressed: () => _openDetail(plant),
-                          icon: const Icon(Icons.article_outlined, size: 16),
-                          label: Text(context.tr('garden.details')),
-                          style: OutlinedButton.styleFrom(
+                          style: TextButton.styleFrom(
                             foregroundColor: _primaryGreen,
-                            side: const BorderSide(color: _primaryGreen),
-                            textStyle: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                context.tr('garden.details'),
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              const Icon(Icons.arrow_forward_ios_rounded, size: 10),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -846,23 +993,33 @@ class _MyGardenTabState extends State<MyGardenTab> {
     required Color color,
     required String text,
   }) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 13),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -877,6 +1034,7 @@ class _MyGardenTabState extends State<MyGardenTab> {
 
     return Image.network(
       imageUrl,
+      headers: Config.imageHeaders,
       fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => Container(
         color: Colors.green.shade50,

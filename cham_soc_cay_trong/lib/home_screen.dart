@@ -331,6 +331,7 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
     if (userAvatarUrl != null && userAvatarUrl!.isNotEmpty) {
       return Image.network(
         Config.getImageUrl(userAvatarUrl!),
+        headers: Config.imageHeaders,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) {
           return Image.asset(

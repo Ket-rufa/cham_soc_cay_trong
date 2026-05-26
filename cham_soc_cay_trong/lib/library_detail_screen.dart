@@ -514,6 +514,7 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
 
     return Image.network(
       imageUrl,
+      headers: Config.imageHeaders,
       fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => Container(
         color: Colors.green.shade100,

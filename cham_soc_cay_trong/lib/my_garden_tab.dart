@@ -97,12 +97,12 @@ class _MyGardenTabState extends State<MyGardenTab> {
 
                     if (imageUrl.startsWith('http')) {
                       imageProvider =
-                          NetworkImage(Config.getImageUrl(imageUrl));
+                          NetworkImage(Config.getImageUrl(imageUrl), headers: Config.imageHeaders);
                     } else {
                       // Nếu là ảnh upload local (uploads/...) thì phải thêm domain
                       // Lưu ý: Config.apiUrl thường có dạng .../api, ta cần bỏ /api để lấy base
                       String baseUrl = Config.apiUrl.replaceAll('/api', '');
-                      imageProvider = NetworkImage('$baseUrl/$imageUrl');
+                      imageProvider = NetworkImage('$baseUrl/$imageUrl', headers: Config.imageHeaders);
                     }
 
                     return Container(

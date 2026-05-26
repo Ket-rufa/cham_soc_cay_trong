@@ -2,7 +2,9 @@ import 'package:cham_soc_cay_trong/l10n/app_localizations.dart';
 import 'package:cham_soc_cay_trong/l10n/language_controller.dart';
 import 'package:cham_soc_cay_trong/language_options_screen.dart';
 import 'package:cham_soc_cay_trong/login/login_screen.dart';
+import 'package:cham_soc_cay_trong/custom_dialog.dart';
 import 'package:cham_soc_cay_trong/profile_screen.dart';
+import 'package:cham_soc_cay_trong/terms_screen.dart';
 import 'package:cham_soc_cay_trong/top_toast_util.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -153,6 +155,16 @@ class MoreScreen extends StatelessWidget {
       return;
     }
 
+    if (item.id == 'terms') {
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => const TermsScreen(),
+        ),
+      );
+      return;
+    }
+
     if (item.id == 'language') {
       await Navigator.push<void>(
         context,
@@ -175,32 +187,14 @@ class MoreScreen extends StatelessWidget {
   }
 
   Future<void> _logout(BuildContext context) async {
-    final bool confirm = await showDialog<bool>(
-          context: context,
-          builder: (BuildContext dialogContext) => AlertDialog(
-            title: Text(context.tr('settings.logout')),
-            content: Text(
-              context.tr('settings.logoutConfirm'),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: Text(
-                  context.tr('common.cancel'),
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: Text(
-                  context.tr('settings.logout'),
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    final bool confirm = await PremiumDialog.showPremiumConfirmDialog(
+      context: context,
+      title: context.tr('settings.logout'),
+      message: context.tr('settings.logoutConfirm'),
+      confirmText: context.tr('settings.logout'),
+      cancelText: context.tr('common.cancel'),
+      isWarning: true,
+    );
 
     if (!confirm) {
       return;

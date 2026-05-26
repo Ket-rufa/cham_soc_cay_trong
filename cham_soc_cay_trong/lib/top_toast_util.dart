@@ -86,7 +86,7 @@ class _TopToastWidgetState extends State<_TopToastWidget> with SingleTickerProvi
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 10,
+      top: MediaQuery.of(context).padding.top + 12,
       left: 16,
       right: 16,
       child: SlideTransition(
@@ -96,27 +96,47 @@ class _TopToastWidgetState extends State<_TopToastWidget> with SingleTickerProvi
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: widget.backgroundColor,
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white.withValues(alpha: 0.98),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: widget.backgroundColor.withValues(alpha: 0.24),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: widget.backgroundColor.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Row(
               children: [
-                Icon(widget.icon, color: Colors.white, size: 24),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: widget.backgroundColor.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: widget.backgroundColor,
+                    size: 20,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     widget.message,
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1B2A22),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
