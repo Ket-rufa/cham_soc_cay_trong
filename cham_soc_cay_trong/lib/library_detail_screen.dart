@@ -78,7 +78,7 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
           'POST',
           Uri.parse('${Config.apiUrl}/plants'),
         )
-          ..headers['Accept'] = 'application/json'
+          ..headers.addAll(Config.apiHeaders)
           ..fields['name'] = _plantName
           ..fields['location'] = 'Sân vườn'
           ..files.add(await http.MultipartFile.fromPath(
@@ -95,7 +95,7 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
             'location': 'Sân vườn',
             'image_url': Config.getImageUrl(widget.imagePath),
           },
-          headers: {'Accept': 'application/json'},
+          headers: Config.apiHeaders,
         );
       }
 
@@ -240,10 +240,7 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
       );
       final response = await http.post(
         Uri.parse('${Config.apiUrl}/schedules'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+        headers: Config.jsonHeaders,
         body: jsonEncode({
           'plant_id': plantId,
           'task_type': 'note',

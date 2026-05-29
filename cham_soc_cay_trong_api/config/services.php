@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'plantid' => [
+        'key' => env('PLANTID_API_KEY', ''),
+        'url' => 'https://api.plant.id/v3/health_assessment',
+    ],
+
 ];

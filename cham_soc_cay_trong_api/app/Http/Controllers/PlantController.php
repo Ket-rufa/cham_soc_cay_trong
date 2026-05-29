@@ -181,15 +181,19 @@ class PlantController extends Controller
         }
 
         $trimmed = str_replace('\\', '/', $trimmed);
-        $baseUrl = $request->getSchemeAndHttpHost();
+        $baseUrl = rtrim((string) config('app.url'), '/');
+        if ($baseUrl === '') {
+            $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+        }
+        $baseScheme = parse_url($baseUrl, PHP_URL_SCHEME) ?: $request->getScheme();
 
         if (str_starts_with($trimmed, '//')) {
-            return $request->getScheme() . ':' . $trimmed;
+            return $baseScheme . ':' . $trimmed;
         }
 
         if (preg_match('/^https?:\/\//i', $trimmed)) {
             return preg_replace(
-                '/^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?/i',
+                '/^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|10\.0\.2\.2|192\.168\.\d+\.\d+)(:\d+)?/i',
                 $baseUrl,
                 $trimmed
             );

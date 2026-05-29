@@ -226,7 +226,7 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
 
     try {
       final url = Uri.parse('${Config.apiUrl}/articles');
-      final response = await http.get(url);
+      final response = await http.get(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
@@ -451,6 +451,7 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
   Widget _buildFunctionButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildFunctionItem(
           Icons.calendar_month_rounded,
@@ -491,6 +492,21 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
           },
         ),
         _buildFunctionItem(
+          Icons.biotech_rounded,
+          "Nhận diện bệnh",
+          const Color(0xFFFBE9E7),
+          const Color(0xFFD84315),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    const CameraScreen(initialDiseaseMode: true),
+              ),
+            );
+          },
+        ),
+        _buildFunctionItem(
           Icons.yard_outlined,
           context.tr('nav.yourGarden'),
           const Color(0xFFF0FFF4),
@@ -508,42 +524,59 @@ class __HomeTabBodyState extends State<_HomeTabBody> {
     Color iconColor, {
     VoidCallback? onTap,
   }) {
-    return Column(
-      children: [
-        Material(
-          color: Colors.transparent,
-          child: Ink(
-            width: 85,
-            height: 85,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.grey[300]!,
-                width: 1,
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: Ink(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.grey[200]!,
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: iconColor.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ),
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(24),
-              splashColor: iconColor.withOpacity(0.2),
-              highlightColor: iconColor.withOpacity(0.1),
-              child: Center(
-                child: Icon(icon, color: iconColor, size: 40),
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(20),
+                splashColor: iconColor.withOpacity(0.15),
+                highlightColor: iconColor.withOpacity(0.08),
+                child: Center(
+                  child: Icon(icon, color: iconColor, size: 30),
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: darkText,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: darkText,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

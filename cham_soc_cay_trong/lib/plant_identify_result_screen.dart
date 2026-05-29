@@ -2,7 +2,10 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:cham_soc_cay_trong/config.dart';
 import 'package:cham_soc_cay_trong/models/plant_disease.dart';
 import 'package:cham_soc_cay_trong/pest_disease_detail_screen.dart';
@@ -10,7 +13,7 @@ import 'package:cham_soc_cay_trong/library_detail_screen.dart';
 import 'package:translator/translator.dart';
 
 class PlantIdentifyResultScreen extends StatefulWidget {
-  final File imageFile;
+  final XFile imageFile;
 
   const PlantIdentifyResultScreen({Key? key, required this.imageFile}) : super(key: key);
 
@@ -50,7 +53,14 @@ class _PlantIdentifyResultScreenState extends State<PlantIdentifyResultScreen> {
       var uri = Uri.parse(
           'https://my-api.plantnet.org/v2/identify/all?api-key=$myKey&include-related-images=false&no-reject=true&lang=en');
       var request = http.MultipartRequest('POST', uri);
-      request.files.add(await http.MultipartFile.fromPath('images', widget.imageFile.path));
+      final bytes = await widget.imageFile.readAsBytes();
+      final ext = widget.imageFile.name.split('.').last.toLowerCase();
+      final mimeType = ext == 'png' ? 'png' : ext == 'webp' ? 'webp' : 'jpeg';
+      request.files.add(http.MultipartFile.fromBytes(
+        'images', bytes,
+        filename: widget.imageFile.name,
+        contentType: MediaType('image', mimeType),
+      ));
       request.fields['organs'] = 'auto';
 
       var response = await request.send();
@@ -208,7 +218,7 @@ class _PlantIdentifyResultScreenState extends State<PlantIdentifyResultScreen> {
   Future<Map<String, dynamic>?> _fetchInfoFromDatabase(String sciName, String engName) async {
     try {
       final url = Uri.parse('${Config.apiUrl}/library');
-      final response = await http.get(url);
+      final response = await http.get(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -239,7 +249,7 @@ class _PlantIdentifyResultScreenState extends State<PlantIdentifyResultScreen> {
       final url = Uri.parse(
         '${Config.apiUrl}/guides?plant_name=${Uri.encodeComponent(plantName)}',
       );
-      final response = await http.get(url);
+      final response = await http.get(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -287,11 +297,18 @@ class _PlantIdentifyResultScreenState extends State<PlantIdentifyResultScreen> {
     try {
       var uri = Uri.parse('${Config.apiUrl}/plants');
       var request = http.MultipartRequest('POST', uri);
-      request.headers['Accept'] = 'application/json';
+      request.headers.addAll(Config.apiHeaders);
 
       request.fields['name'] = _plantData!['name_vi'];
       request.fields['location'] = "Sân vườn";
-      request.files.add(await http.MultipartFile.fromPath('image', widget.imageFile.path));
+      final imgBytes = await widget.imageFile.readAsBytes();
+      final imgExt = widget.imageFile.name.split('.').last.toLowerCase();
+      final imgMime = imgExt == 'png' ? 'png' : imgExt == 'webp' ? 'webp' : 'jpeg';
+      request.files.add(http.MultipartFile.fromBytes(
+        'image', imgBytes,
+        filename: widget.imageFile.name,
+        contentType: MediaType('image', imgMime),
+      ));
 
       var response = await request.send();
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -511,9 +528,11 @@ class _PlantIdentifyResultScreenState extends State<PlantIdentifyResultScreen> {
                             fit: StackFit.expand,
                             children: [
                               // Ảnh cây Hero
-                              Hero(
-                                tag: widget.imageFile.path,
-                                child: Image.file(widget.imageFile, fit: BoxFit.cover),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: kIsWeb 
+                                    ? Image.network(widget.imageFile.path, fit: BoxFit.cover)
+                                    : Image.file(File(widget.imageFile.path), fit: BoxFit.cover),
                               ),
                               // Lớp gradient đậm nổi text
                               const DecoratedBox(

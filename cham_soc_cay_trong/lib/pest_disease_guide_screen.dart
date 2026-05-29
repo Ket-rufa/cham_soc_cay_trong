@@ -36,7 +36,7 @@ class _PestDiseaseGuideScreenState extends State<PestDiseaseGuideScreen> {
       final url = Uri.parse(
         '${Config.apiUrl}/guides?plant_name=${Uri.encodeComponent(widget.plantName)}',
       );
-      final response = await http.get(url);
+      final response = await http.get(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

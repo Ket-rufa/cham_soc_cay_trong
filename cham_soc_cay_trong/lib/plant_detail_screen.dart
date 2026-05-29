@@ -29,7 +29,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
       // Thay vì lấy toàn bộ danh sách, ta chỉ lấy thông tin của đúng cây này
       final url = Uri.parse('${Config.apiUrl}/plants/${widget.plantId}');
 
-      final response = await http.get(url);
+      final response = await http.get(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);

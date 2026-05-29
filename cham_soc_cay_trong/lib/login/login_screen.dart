@@ -33,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final response = await http.post(
         Uri.parse('${Config.apiUrl}/login'),
+        headers: Config.apiHeaders,
         body: {
           'email': _emailController.text,
           'password': _passwordController.text,

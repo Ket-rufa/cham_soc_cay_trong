@@ -84,7 +84,9 @@ class _PlantLibraryGridState extends State<_PlantLibraryGrid> {
     try {
       final url =
           Uri.parse('${Config.apiUrl}/library?type=${widget.categoryType}');
-      final response = await http.get(url).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(url, headers: Config.apiHeaders)
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);

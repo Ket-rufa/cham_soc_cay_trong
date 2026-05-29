@@ -50,7 +50,7 @@ class _MyGardenTabState extends State<MyGardenTab> {
 
     try {
       final url = Uri.parse('${Config.apiUrl}/plants');
-      final response = await http.get(url);
+      final response = await http.get(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
@@ -96,7 +96,7 @@ class _MyGardenTabState extends State<MyGardenTab> {
 
     try {
       final url = Uri.parse('${Config.apiUrl}/plants/$id');
-      final response = await http.delete(url);
+      final response = await http.delete(url, headers: Config.apiHeaders);
 
       if (!mounted) return;
       if (response.statusCode == 200) {

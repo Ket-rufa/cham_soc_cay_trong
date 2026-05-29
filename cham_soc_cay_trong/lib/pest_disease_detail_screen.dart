@@ -541,7 +541,7 @@ class DiseaseImageFrame extends StatelessWidget {
       return Config.getImageUrl(trimmed);
     }
 
-    final serverBaseUrl = Config.apiUrl.replaceAll('/api', '');
+    final serverBaseUrl = Config.backendBaseUrl;
     if (trimmed.startsWith('/')) {
       return '$serverBaseUrl$trimmed';
     }

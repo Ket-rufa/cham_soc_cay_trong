@@ -166,6 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Uri.parse('${Config.apiUrl}/profile/update'),
       );
 
+      request.headers.addAll(Config.apiHeaders);
       request.fields['user_id'] = userId.toString();
       request.fields['name'] = _nameController.text.trim();
 
@@ -263,6 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final http.Response response = await http.post(
         Uri.parse('${Config.apiUrl}/profile/change-password'),
+        headers: Config.apiHeaders,
         body: <String, String>{
           'user_id': userId.toString(),
           'current_password': _currentPasswordController.text,

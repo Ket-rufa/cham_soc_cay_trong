@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:cham_soc_cay_trong/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -6,9 +5,11 @@ import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cham_soc_cay_trong/main.dart'; // Để lấy biến cameras toàn cục
 import 'package:cham_soc_cay_trong/plant_identify_result_screen.dart'; // Import màn hình AI
+import 'package:cham_soc_cay_trong/disease_identify_result_screen.dart'; // Import màn hình nhận diện bệnh
 
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({Key? key}) : super(key: key);
+  final bool initialDiseaseMode;
+  const CameraScreen({Key? key, this.initialDiseaseMode = false}) : super(key: key);
 
   @override
   _CameraScreenState createState() => _CameraScreenState();
@@ -19,10 +20,12 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isCameraInitialized = false;
   int _selectedCameraIndex = 0;
   FlashMode _currentFlashMode = FlashMode.auto;
+  late bool _isDiseaseMode;
 
   @override
   void initState() {
     super.initState();
+    _isDiseaseMode = widget.initialDiseaseMode;
     _initCamera(_selectedCameraIndex);
   }
 
@@ -124,8 +127,9 @@ class _CameraScreenState extends State<CameraScreen> {
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                PlantIdentifyResultScreen(imageFile: File(pickedFile.path)),
+            builder: (context) => _isDiseaseMode
+                ? DiseaseIdentifyResultScreen(imageFile: pickedFile)
+                : PlantIdentifyResultScreen(imageFile: pickedFile),
           ),
         );
       }
@@ -151,8 +155,9 @@ class _CameraScreenState extends State<CameraScreen> {
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                PlantIdentifyResultScreen(imageFile: File(imageFile.path)),
+            builder: (context) => _isDiseaseMode
+                ? DiseaseIdentifyResultScreen(imageFile: imageFile)
+                : PlantIdentifyResultScreen(imageFile: imageFile),
           ),
         );
       }
@@ -322,7 +327,108 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           ),
 
-          // 4. Hướng dẫn chụp kính mờ (Floating Info Glass Card)
+          // 4. Thanh chuyển chế độ (Nhận diện cây / Nhận diện bệnh)
+          Positioned(
+            bottom: 200,
+            left: 40,
+            right: 40,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black38,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _isDiseaseMode = false),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: !_isDiseaseMode
+                                  ? const Color(0xFF25BB57)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.eco_rounded,
+                                  color: !_isDiseaseMode
+                                      ? Colors.white
+                                      : Colors.white54,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "Nhận diện cây",
+                                  style: TextStyle(
+                                    color: !_isDiseaseMode
+                                        ? Colors.white
+                                        : Colors.white54,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _isDiseaseMode = true),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: _isDiseaseMode
+                                  ? Colors.redAccent
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.biotech_rounded,
+                                  color: _isDiseaseMode
+                                      ? Colors.white
+                                      : Colors.white54,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "Nhận diện bệnh",
+                                  style: TextStyle(
+                                    color: _isDiseaseMode
+                                        ? Colors.white
+                                        : Colors.white54,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 4b. Hướng dẫn chụp kính mờ (Floating Info Glass Card)
           Positioned(
             bottom: 146,
             left: 32,
@@ -340,11 +446,17 @@ class _CameraScreenState extends State<CameraScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline_rounded, color: Color(0xFF25BB57), size: 22),
+                      Icon(
+                        _isDiseaseMode ? Icons.biotech_rounded : Icons.info_outline_rounded,
+                        color: _isDiseaseMode ? Colors.redAccent : const Color(0xFF25BB57),
+                        size: 22,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          context.tr('camera.identifyHint'),
+                          _isDiseaseMode
+                              ? "Hướng ống kính vào phần lá hoặc cây bị bệnh để AI phân tích"
+                              : context.tr('camera.identifyHint'),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,

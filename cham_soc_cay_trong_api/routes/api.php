@@ -8,6 +8,7 @@ use App\Http\Controllers\PlantInfoController;
 use App\Http\Controllers\CareScheduleController;
 use App\Http\Controllers\PestDiseaseGuideController;
 use App\Http\Controllers\ArticleController;
+use App\Http\Controllers\DiseaseIdentifyController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,3 +43,4 @@ Route::post('/schedules/{id}/complete', [CareScheduleController::class, 'complet
 Route::get('/guides', [PestDiseaseGuideController::class, 'getGuideByPlant']);
 Route::get('/articles', [ArticleController::class, 'index']);
 Route::get('/articles/{id}', [ArticleController::class, 'show']);
+Route::post('/disease-identify', [DiseaseIdentifyController::class, 'identify']);

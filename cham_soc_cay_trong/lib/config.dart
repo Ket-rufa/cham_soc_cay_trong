@@ -1,15 +1,26 @@
 class Config {
-  // Use the LAN IP/domain of the machine that runs the Laravel API.
-  // Android phones cannot reach "localhost" on your laptop.
-  static const String serverIp = "192.168.1.10";
-  static const String serverPort = "8000";
-  static const String backendBaseUrl = "http://$serverIp:$serverPort";
-  static const String apiUrl = "$backendBaseUrl/api";
-  static const String imageBaseUrl = backendBaseUrl;
+  static const String backendHost = "wikipedia-stopper-frayed.ngrok-free.dev";
+  static const String baseUrl = "https://$backendHost";
+  static const String backendBaseUrl = baseUrl;
+  static const String apiUrl = "$baseUrl/api";
+  static const String imageBaseUrl = baseUrl;
   static const String plantNetApiKey = "2b109VgvlqVVbZXF5QrJDTbj";
+  static const String ngrokSkipBrowserWarningHeader =
+      "ngrok-skip-browser-warning";
+
+  static const Map<String, String> apiHeaders = {
+    'Accept': 'application/json',
+    ngrokSkipBrowserWarningHeader: 'true',
+  };
+
+  static const Map<String, String> jsonHeaders = {
+    ...apiHeaders,
+    'Content-Type': 'application/json',
+  };
 
   static const Map<String, String> imageHeaders = {
     'User-Agent': 'ChamSocCayTrong/1.0 (Flutter Android; image loader)',
+    ngrokSkipBrowserWarningHeader: 'true',
     'Accept':
         'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
   };
@@ -17,6 +28,7 @@ class Config {
   static const Map<String, String> wikimediaImageHeaders = {
     'User-Agent': 'ChamSocCayTrong/1.0 (Flutter Android; educational app)',
     'Referer': 'https://commons.wikimedia.org/',
+    ngrokSkipBrowserWarningHeader: 'true',
     'Accept':
         'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
   };
@@ -77,7 +89,7 @@ class Config {
   static bool isBackendUrl(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) return false;
-    return _isLocalBackendHost(uri.host) || uri.host == serverIp;
+    return _isLegacyLocalBackendHost(uri.host) || uri.host == backendHost;
   }
 
   static bool canUseProxyFallback(String url) {
@@ -104,11 +116,14 @@ class Config {
     final uri = Uri.tryParse(url);
     if (uri == null || uri.host.isEmpty) return url;
 
-    if (!_isLocalBackendHost(uri.host)) return url;
+    if (!_isLegacyLocalBackendHost(uri.host)) return url;
 
-    final replacement = uri.replace(
-      host: serverIp,
-      port: uri.hasPort ? uri.port : int.tryParse(serverPort),
+    final replacement = Uri.parse(baseUrl).resolveUri(
+      Uri(
+        path: uri.path,
+        query: uri.hasQuery ? uri.query : null,
+        fragment: uri.hasFragment ? uri.fragment : null,
+      ),
     );
     return replacement.toString();
   }
@@ -154,13 +169,14 @@ class Config {
     return value.startsWith('assets/');
   }
 
-  static bool _isLocalBackendHost(String host) {
+  static bool _isLegacyLocalBackendHost(String host) {
     final lower = host.toLowerCase();
     return lower == 'localhost' ||
         lower == '127.0.0.1' ||
         lower == '0.0.0.0' ||
         lower == '10.0.2.2' ||
-        lower == '::1';
+        lower == '::1' ||
+        RegExp(r'^192\.168\.').hasMatch(lower);
   }
 
   static String _stringValue(Object? value) {

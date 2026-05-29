@@ -26,7 +26,7 @@ class _MyGardenTabState extends State<MyGardenTab> {
     try {
       // Gọi vào hàm index() bạn vừa viết trong Laravel
       final url = Uri.parse('${Config.apiUrl}/plants');
-      final response = await http.get(url);
+      final response = await http.get(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);

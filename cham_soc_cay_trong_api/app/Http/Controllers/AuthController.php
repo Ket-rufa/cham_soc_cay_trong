@@ -178,7 +178,10 @@ class AuthController extends Controller
             return null;
         }
 
-        $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+        $baseUrl = rtrim((string) config('app.url'), '/');
+        if ($baseUrl === '') {
+            $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+        }
         $version = @filemtime($avatarFile) ?: time();
 
         return $baseUrl . '/api/profile/avatar/' . $user->id . '?v=' . $version;

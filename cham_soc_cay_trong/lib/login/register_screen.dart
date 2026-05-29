@@ -43,6 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       final response = await http.post(
         Uri.parse('${Config.apiUrl}/register'),
+        headers: Config.apiHeaders,
         body: {
           'name': _nameController.text,
           'email': _emailController.text,

@@ -113,7 +113,7 @@ class _CareScheduleScreenState extends State<CareScheduleScreen> {
     setState(() => _isLoading = true);
     try {
       final url = Uri.parse('${Config.apiUrl}/schedules');
-      final response = await http.get(url);
+      final response = await http.get(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
@@ -135,7 +135,7 @@ class _CareScheduleScreenState extends State<CareScheduleScreen> {
   Future<void> _completeTask(int id) async {
     try {
       final url = Uri.parse('${Config.apiUrl}/schedules/$id/complete');
-      final response = await http.post(url);
+      final response = await http.post(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         if (mounted) {
@@ -195,10 +195,7 @@ class _CareScheduleScreenState extends State<CareScheduleScreen> {
       final url = Uri.parse('${Config.apiUrl}/schedules/${task['id']}');
       final response = await http.put(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: Config.jsonHeaders,
         body: jsonEncode({
           'next_due_at': pickedDateTime.toUtc().toIso8601String(),
         }),
@@ -244,7 +241,7 @@ class _CareScheduleScreenState extends State<CareScheduleScreen> {
 
     try {
       final url = Uri.parse('${Config.apiUrl}/schedules/$id');
-      final response = await http.delete(url);
+      final response = await http.delete(url, headers: Config.apiHeaders);
 
       if (response.statusCode == 200) {
         if (mounted) {
