@@ -42,7 +42,11 @@ class _CareScheduleScreenState extends State<CareScheduleScreen> {
   void initState() {
     super.initState();
     _screenOpenedTime = DateTime.now();
-    LocalNotificationUtil.initialize();
+    LocalNotificationUtil.initialize().then((_) {
+      if (mounted) {
+        _checkAndShowNotifications();
+      }
+    });
     _fetchSchedules();
     _startNotificationTimer();
   }

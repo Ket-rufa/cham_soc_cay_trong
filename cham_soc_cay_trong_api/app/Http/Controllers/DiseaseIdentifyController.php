@@ -237,6 +237,12 @@ class DiseaseIdentifyController extends Controller
         $map = [
             'powdery mildew'   => 'Bệnh phấn trắng',
             'black spot'       => 'Bệnh đốm đen',
+            // Plant.id đôi khi trả về tên khoa học của bệnh đốm đen hoa hồng.
+            // Không đưa các tên khoa học này qua Google Translate vì dễ bị dịch sai
+            // thành nghĩa thông thường như "ngoại giao".
+            'diplocarpon rosae' => 'Bệnh đốm đen',
+            'diplocarpon'      => 'Bệnh đốm đen',
+            'rose black spot'  => 'Bệnh đốm đen',
             'rust'             => 'Bệnh gỉ sắt',
             'gray mold'        => 'Bệnh mốc xám',
             'botrytis'         => 'Bệnh mốc xám (Botrytis)',
@@ -308,7 +314,8 @@ class DiseaseIdentifyController extends Controller
         $lower = strtolower($englishName);
         if (str_contains($lower, 'mildew') || str_contains($lower, 'rust') ||
             str_contains($lower, 'blight') || str_contains($lower, 'mold') ||
-            str_contains($lower, 'anthracnose') || str_contains($lower, 'scab')) {
+            str_contains($lower, 'anthracnose') || str_contains($lower, 'scab') ||
+            str_contains($lower, 'diplocarpon')) {
             return 'Bệnh nấm';
         }
         if (str_contains($lower, 'mosaic') || str_contains($lower, 'virus') ||
@@ -337,3 +344,6 @@ class DiseaseIdentifyController extends Controller
         return strtolower(preg_replace('/[^a-z0-9]+/i', '_', $name));
     }
 }
+
+
+
