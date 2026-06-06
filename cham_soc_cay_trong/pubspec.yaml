@@ -1,5 +1,5 @@
-name: cham_soc_cay_trong
-description: Chăm sóc cây trồng app.
+﻿name: cham_soc_cay_trong
+description: ChÄƒm sÃ³c cÃ¢y trá»“ng app.
 
 publish_to: 'none'
 
@@ -37,4 +37,6 @@ flutter:
     - assets/avatar.png
     - assets/translations/
     - assets/images/diseases/
+    - assets/images/plants/
+
 

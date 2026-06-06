@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:cham_soc_cay_trong/config.dart';
 import 'package:cham_soc_cay_trong/models/plant_disease.dart';
@@ -89,7 +89,7 @@ class _PestDiseaseGuideScreenState extends State<PestDiseaseGuideScreen> {
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: Text(
-          'Hướng dẫn sâu bệnh: ${widget.plantName}',
+          'Cẩm nang sâu bệnh',
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(color: Colors.black, fontSize: 18),
         ),
@@ -112,8 +112,8 @@ class _PestDiseaseGuideScreenState extends State<PestDiseaseGuideScreen> {
       return _GuideMessageState(
         icon: Icons.error_outline,
         iconColor: Colors.red,
-        message: 'Đã có lỗi xảy ra khi tải dữ liệu.',
-        actionLabel: 'Thử lại',
+        message: 'ÄÃ£ cÃ³ lá»—i xáº£y ra khi táº£i dá»¯ liá»‡u.',
+        actionLabel: 'Thá»­ láº¡i',
         onActionPressed: () {
           setState(() {
             _isLoading = true;
@@ -128,7 +128,7 @@ class _PestDiseaseGuideScreenState extends State<PestDiseaseGuideScreen> {
       return const _GuideMessageState(
         icon: Icons.inventory_2_outlined,
         iconColor: Colors.grey,
-        message: 'Chưa có hướng dẫn sâu bệnh cho loại cây này.',
+        message: 'ChÆ°a cÃ³ hÆ°á»›ng dáº«n sÃ¢u bá»‡nh cho loáº¡i cÃ¢y nÃ y.',
       );
     }
 
@@ -320,3 +320,5 @@ class _GuideMessageState extends StatelessWidget {
     );
   }
 }
+
+

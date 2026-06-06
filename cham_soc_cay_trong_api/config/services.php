@@ -40,4 +40,9 @@ return [
         'url' => 'https://api.plant.id/v3/health_assessment',
     ],
 
+    'plantnet' => [
+        'key' => env('PLANTNET_API_KEY', '2b109VgvlqVVbZXF5QrJDTbj'),
+        'url' => env('PLANTNET_API_URL', 'https://my-api.plantnet.org/v2/identify/all'),
+    ],
+
 ];

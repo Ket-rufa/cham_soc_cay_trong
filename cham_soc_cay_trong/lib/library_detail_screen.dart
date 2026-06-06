@@ -30,6 +30,137 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
   static const Color _darkText = Color(0xFF202124);
 
   final TextEditingController _noteController = TextEditingController();
+  final PageController _heroPageController = PageController();
+  int _heroImageIndex = 0;
+
+  /// Bảng tra cứu: từ khoá (viết thường) → danh sách ảnh asset.
+  /// Các key dài/cụ thể hơn sẽ ưu tiên nhờ cơ chế longest-match.
+  /// Chỉ dùng tên file ASCII để tránh lỗi load asset trên Android.
+  static const Map<String, List<String>> _plantImageMap = {
+    // ─ Họa mi / Vạn thọ trước 'cúc' chung vì dài hơn
+    'cúc họa mi': [
+    ],
+    'cúc vạn thọ': [
+      'assets/images/plants/hoa_van_tho.jpg',
+    ],
+    'hoa cúc': [
+      'assets/images/plants/hoa-cuc.jpg',
+    ],
+    // ─ Sứ quân tử trước hoa sứ vì dài hơn
+    'sứ quân tử': [
+      'assets/images/plants/hoa_su_quan_tu.jpg',
+    ],
+    'hoa sứ': [
+      'assets/images/plants/hoa-su.jpg',
+      'assets/images/plants/hoa-su1.jpg',
+    ],
+    // ─ Lan hồ điệp riêng, phong lan riêng
+    'lan hồ điệp': [
+      'assets/images/plants/lan-ho-diep.jpg',
+    ],
+    'phong lan': [
+      'assets/images/plants/hoa phong lan.jpg',
+      'assets/images/plants/hoa phong lan1.jpg',
+    ],
+    // ─ Cẩm tú cầu trước cẩm chướng vì dài hơn
+    'cẩm tú cầu': [
+      'assets/images/plants/hoa-cam-tu-cau-hong.jpg',
+    ],
+    'cẩm chướng': [
+      'assets/images/plants/hoa-cam-chuong.jpg',
+    ],
+    // ─ Các loài còn lại (chỉ dùng tên file ASCII)
+    'hoa hồng': [
+      'assets/images/plants/hoa-hong.jpg',
+      'assets/images/plants/hoa-hong-1.jpg',
+    ],
+    'hướng dương': [
+      'assets/images/plants/hoa-huong-duong.jpg',
+      'assets/images/plants/hoa-huong-duong1.jpg',
+    ],
+    'bỉ ngạn': [
+      'assets/images/plants/hoa-bi-ngan1.jpg',
+    ],
+    'dâm bụt': [
+      'assets/images/plants/hoa-dam-but.jpg',
+    ],
+    'dạ yến thảo': [
+      'assets/images/plants/hoa-da-yen-thao.jpg',
+    ],
+    'dừa cạn': [
+      'assets/images/plants/hoa-dua-can.jpg',
+    ],
+    'hoa giấy': [
+      'assets/images/plants/hoa-giay.jpg',
+    ],
+    'huỳnh anh': [
+      'assets/images/plants/hoa_huynh_anh.jpg',
+    ],
+    'hoa ly': [
+      'assets/images/plants/hoa ly.jpg',
+      'assets/images/plants/hoa ly 1.jpg',
+    ],
+    'loa kèn': [
+      'assets/images/plants/hoa_loa_ken.jpg',
+    ],
+    'lồng đèn': [
+      'assets/images/plants/hoa-long-den.jpg',
+      'assets/images/plants/hoa-long-den-1.jpg',
+    ],
+    'hoa mai': [
+      'assets/images/plants/hoa-mai.jpg',
+      'assets/images/plants/hoa mai 1.jpg',
+    ],
+    'mười giờ': [
+      'assets/images/plants/hoa-muoi-gio.jpg',
+      'assets/images/plants/hoa-muoi-gio-1.jpg',
+    ],
+    'mẫu đơn': [
+      'assets/images/plants/hoa-mau-don.jpg',
+      'assets/images/plants/hoa-mau-don1.jpg',
+    ],
+    'ngọc lan': [
+      'assets/images/plants/hoa_ngoc_lan.jpg',
+    ],
+    'hoa nhài': [
+      'assets/images/plants/hoa_nhai.jpg',
+    ],
+    'hoa sen': [
+      'assets/images/plants/hoa sen1.jpg',
+      'assets/images/plants/hoa-sen.jpg',
+    ],
+    'thanh tú': [
+      'assets/images/plants/hoa-thanh-tu.jpg',
+      'assets/images/plants/hoa-thanh-tu1.jpg',
+    ],
+    'thược dược': [
+      'assets/images/plants/Thuoc-Duoc.jpg',
+    ],
+    'tigon': [
+      'assets/images/plants/hoa tigon.jpg',
+      'assets/images/plants/hoa-tigonjpg.jpg',
+    ],
+    'tường vi': [
+      'assets/images/plants/hoa-tuong-vi.jpg',
+      'assets/images/plants/hoa-tuong-vi0.jpg',
+    ],
+    'hoa đào': [
+      'assets/images/plants/hoa-dao.jpg',
+      'assets/images/plants/hoa-dao-1.jpg',
+    ],
+    'đồng tiền': [
+      'assets/images/plants/hoa-dong-tien.jpg',
+      'assets/images/plants/hoa-dong-tien1.jpg',
+    ],
+    'hoa súng': [
+      'assets/images/plants/hoa-sung.jpg',
+      'assets/images/plants/Hoa-sung1i.jpg',
+    ],
+    'trạng nguyên': [
+      'assets/images/plants/cay-hoa-trang-nguyen.jpg',
+      'assets/images/plants/hoa_trang_nguyen.jpg',
+    ],
+  };
 
   late Map<String, dynamic> _plantData;
   bool _isSaving = false;
@@ -63,6 +194,7 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
 
   @override
   void dispose() {
+    _heroPageController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -468,52 +600,223 @@ class _LibraryDetailScreenState extends State<LibraryDetailScreen> {
     );
   }
 
+  /// Tổng hợp danh sách đường dẫn ảnh dùng trong hero slider.
+  /// Ưu tiên: imagePath chính → image_url từ API → ảnh asset khớp tên cây.
+  List<String> _heroImagesForPlant() {
+    final images = <String>[];
+
+    void _add(String path) {
+      final p = path.trim();
+      if (p.isNotEmpty && !images.contains(p)) images.add(p);
+    }
+
+    // 1. Ảnh chính từ widget
+    _add(widget.imagePath);
+
+    // 2. image_url / imageUrl từ dữ liệu cây
+    _add(_stringValue(_plantData['image_url'] ?? _plantData['imageUrl']));
+
+    // 3. Danh sách images[] từ API
+    final rawImages = _plantData['images'];
+    if (rawImages is List) {
+      for (final img in rawImages) {
+        _add(_stringValue(img));
+      }
+    }
+
+    // 4. Tra bảng _plantImageMap theo tên cây — chiến lược LONGEST-MATCH:
+    //    Duyệt toàn bộ map, chọn key dài nhất khớp → tránh cúc/cúc họa mi, sứ/sứ quân tử...
+    final name = _plantName.toLowerCase();
+    String? bestKey;
+    for (final key in _plantImageMap.keys) {
+      if (name.contains(key.toLowerCase())) {
+        if (bestKey == null || key.length > bestKey.length) {
+          bestKey = key;
+        }
+      }
+    }
+    if (bestKey != null) {
+      for (final assetPath in _plantImageMap[bestKey]!) {
+        _add(assetPath);
+      }
+    }
+
+    return images;
+  }
+
   Widget _buildPlantHero() {
+    final heroImages = _heroImagesForPlant();
+    final hasMultiple = heroImages.length > 1;
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       child: SizedBox(
-        height: 204,
+        height: 280,
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            _buildHeaderImage(),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.center,
-                  colors: [Colors.black45, Colors.transparent],
+            // ── Ảnh / Slider ──
+            if (heroImages.isEmpty)
+              _buildHeaderImage()
+            else
+              PageView.builder(
+                controller: _heroPageController,
+                physics: const ClampingScrollPhysics(),
+                itemCount: heroImages.length,
+                onPageChanged: (index) {
+                  setState(() => _heroImageIndex = index);
+                },
+                itemBuilder: (context, index) {
+                  return _buildHeroImageFromPath(heroImages[index]);
+                },
+              ),
+
+            // ── Gradient overlay ──
+            const IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment(0, -0.3),
+                    colors: [Colors.black54, Colors.transparent],
+                  ),
                 ),
               ),
             ),
+
+            // ── Tên cây + badge vườn ──
             Positioned(
-              left: 14,
-              right: 14,
-              bottom: 14,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _plantName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        shadows: [Shadow(blurRadius: 6, color: Colors.black54)],
+              left: 16,
+              right: 16,
+              bottom: hasMultiple ? 42 : 16,
+              child: IgnorePointer(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _plantName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          height: 1.2,
+                          shadows: [
+                            Shadow(blurRadius: 8, color: Colors.black54),
+                            Shadow(blurRadius: 2, color: Colors.black38),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  if (_isGardenPlant) _buildHeroGardenBadge(),
-                ],
+                    if (_isGardenPlant) _buildHeroGardenBadge(),
+                  ],
+                ),
               ),
             ),
+
+            // ── Dot indicators + số ảnh ──
+            if (hasMultiple)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 14,
+                child: IgnorePointer(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _buildHeroDots(heroImages.length),
+                      _buildImageCountBadge(heroImages.length),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildHeroDots(int count) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(count, (index) {
+        final isActive = index == _heroImageIndex;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: isActive ? 22 : 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(99),
+            boxShadow: isActive
+                ? [const BoxShadow(color: Colors.black26, blurRadius: 4)]
+                : null,
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildImageCountBadge(int total) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.photo_library_outlined, color: Colors.white, size: 13),
+          const SizedBox(width: 4),
+          Text(
+            '${_heroImageIndex + 1}/$total',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroImageFromPath(String path) {
+    if (path.startsWith('assets/')) {
+      return Image.asset(
+        path,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) =>
+            _buildImagePlaceholder(Icons.broken_image_outlined),
+      );
+    }
+
+    final localImage = _localImageFile(path);
+    if (localImage != null) {
+      return Image.file(
+        localImage,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) =>
+            _buildImagePlaceholder(Icons.broken_image_outlined),
+      );
+    }
+
+    final imageUrl = _resolvedImageUrl(path);
+    return imageUrl.isEmpty
+        ? _buildImagePlaceholder(Icons.local_florist_rounded, size: 72)
+        : _buildNetworkHeaderImage(imageUrl);
   }
 
   Widget _buildHeaderImage() {
@@ -2700,3 +3003,4 @@ class _PestProfile {
     );
   }
 }
+

@@ -20,12 +20,23 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _rememberMe = false;
 
   static const Color _primaryGreen = Color(0xFF2E7D32);
   static const Color _accentGreen = Color(0xFF66BB6A);
   static const Color _pageBackground = Color(0xFFF4F8F1);
   static const Color _textColor = Color(0xFF1F2A24);
   static const Color _mutedTextColor = Color(0xFF6B756F);
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final remember = prefs.getBool('rememberMe') ?? false;
+    if (remember) {
+      _emailController.text = prefs.getString('savedEmail') ?? '';
+      _passwordController.text = prefs.getString('savedPassword') ?? '';
+    }
+    if (mounted) setState(() => _rememberMe = remember);
+  }
 
   Future<void> _login() async {
     setState(() => _isLoading = true);
@@ -44,6 +55,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
+
+        // Lưu hoặc xoá thông tin đăng nhập tuỳ checkbox
+        if (_rememberMe) {
+          await prefs.setBool('rememberMe', true);
+          await prefs.setString('savedEmail', _emailController.text.trim());
+          await prefs.setString('savedPassword', _passwordController.text);
+        } else {
+          await prefs.remove('rememberMe');
+          await prefs.remove('savedEmail');
+          await prefs.remove('savedPassword');
+        }
+
         await prefs.setInt('userId', data['data']['id']);
         await prefs.setString('userName', data['data']['name']);
 
@@ -96,6 +119,12 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
   }
 
   @override
@@ -260,7 +289,50 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: _mutedTextColor,
                               ),
                             ),
-                            const SizedBox(height: 22),
+                            const SizedBox(height: 10),
+                            // ── Checkbox ghi nhớ đăng nhập ──
+                            InkWell(
+                              onTap: () => setState(() => _rememberMe = !_rememberMe),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                child: Row(
+                                  children: [
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      curve: Curves.easeOutCubic,
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        color: _rememberMe ? _primaryGreen : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(5),
+                                        border: Border.all(
+                                          color: _rememberMe ? _primaryGreen : const Color(0xFFBECDBA),
+                                          width: 1.8,
+                                        ),
+                                      ),
+                                      child: _rememberMe
+                                          ? const Icon(
+                                              Icons.check,
+                                              color: Colors.white,
+                                              size: 14,
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Text(
+                                      'Ghi nhớ đăng nhập',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: _mutedTextColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
                             SizedBox(
                               width: double.infinity,
                               height: 54,
